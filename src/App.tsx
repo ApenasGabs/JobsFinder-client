@@ -2,9 +2,280 @@ import { useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
+import { useState, useEffect, useRef } from 'react';
+import {
+  Search,
+  Play,
+  Settings,
+  Trash2,
+  ExternalLink,
+  Briefcase,
+  Layers,
+  Activity,
+  CheckCircle2,
+  RefreshCw,
+  Cpu,
+  MapPin,
+  Building,
+  Radio,
+  X
+} from 'lucide-react';
 
 function App() {
   const [count, setCount] = useState(0)
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  workModel: 'REMOTO' | 'HIBRIDO' | 'PRESENCIAL' | 'NAO_INFORMADO';
+  salary?: string;
+  contractType: 'CLT' | 'PJ' | 'FREELANCER' | 'ESTAGIO' | 'OUTRO';
+  seniorityLevel: string;
+  url: string;
+  source: string;
+  stack: string[];
+  scrapedAt: string;
+  description?: string;
+}
+
+interface AppConfig {
+  searchTerms: string[];
+  seniorityLevels: string[];
+  contractTypes: string[];
+  sources: Array<{ id: string; name: string; type: string; enabled: boolean }>;
+  gupyCompanies: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
+}
+
+export default function App() {
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [stats, setStats] = useState<any>({});
+  const [config, setConfig] = useState<AppConfig | null>(null);
+  const [health, setHealth] = useState<any>(null);
+
+  // Filtros de busca local
+  const [searchFilter, setSearchFilter] = useState('');
+  const [modelFilter, setModelFilter] = useState('ALL');
+  const [contractFilter, setContractFilter] = useState('ALL');
+  const [sourceFilter, setSourceFilter] = useState('ALL');
+
+  // Parâmetros de execução do crawler
+  const [selectedTerms, setSelectedTerms] = useState<string[]>(['java', 'react', 'node']);
+  const [selectedSources, setSelectedSources] = useState<string[]>(['GUPY', 'REMOTEOK', 'PROGRAMATHOR', 'FREELAS_99', 'GEEKHUNTER']);
+  const [newCustomTerm, setNewCustomTerm] = useState('');
+
+  // Estado da execução / SSE
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeProgress, setScrapeProgress] = useState<{
+    message: string;
+    percent?: number;
+    currentCompany?: string;
+    totalFound: number;
+  }>({ message: 'Pronto para iniciar busca', percent: 0, totalFound: 0 });
+
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Carrega dados iniciais
+  useEffect(() => {
+    loadHealth();
+    loadConfig();
+    loadJobs();
+    loadStats();
+
+    const interval = setInterval(() => {
+      loadHealth();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const loadHealth = async () => {
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) setHealth(await res.json());
+    } catch {
+      // Servidor offline ou iniciando
+    }
+  };
+
+  const loadConfig = async () => {
+    try {
+      const res = await fetch('/api/config');
+      if (res.ok) {
+        const data: AppConfig = await res.json();
+        setConfig(data);
+        if (data.searchTerms?.length > 0) {
+          setSelectedTerms(data.searchTerms.slice(0, 5));
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao carregar config:', err);
+    }
+  };
+
+  const loadJobs = async () => {
+    try {
+      const res = await fetch('/api/jobs?pageSize=100');
+      if (res.ok) {
+        const data = await res.json();
+        setJobs(data.jobs || []);
+        setTotalJobs(data.total || 0);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar vagas:', err);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      const res = await fetch('/api/stats');
+      if (res.ok) setStats(await res.json());
+    } catch (err) {
+      console.error('Erro ao carregar estatísticas:', err);
+    }
+  };
+
+  // Inicia a varredura com streaming em tempo real (SSE)
+  const startScrape = () => {
+    if (isScraping) return;
+
+    setIsScraping(true);
+    setScrapeProgress({
+      message: 'Conectando ao mecanismo de scraping...',
+      percent: 5,
+      totalFound: 0
+    });
+
+    const queryParams = new URLSearchParams({
+      keywords: selectedTerms.join(','),
+      sources: selectedSources.join(',')
+    });
+
+    const sse = new EventSource(`/api/scrape/stream?${queryParams.toString()}`);
+    eventSourceRef.current = sse;
+
+    sse.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+
+        if (event.type === 'start') {
+          setScrapeProgress({
+            message: event.message || 'Iniciando varredura...',
+            percent: 10,
+            totalFound: 0
+          });
+        } else if (event.type === 'progress') {
+          setScrapeProgress((prev) => ({
+            ...prev,
+            message: event.message || prev.message,
+            percent: event.progressPercent || prev.percent,
+            currentCompany: event.currentCompany
+          }));
+        } else if (event.type === 'job' && event.job) {
+          // Adiciona a vaga recebida em tempo real no topo da lista
+          setJobs((prev) => {
+            const exists = prev.some((j) => j.id === event.job.id);
+            if (exists) return prev;
+            return [event.job, ...prev];
+          });
+          setScrapeProgress((prev) => ({
+            ...prev,
+            totalFound: event.totalFound || prev.totalFound + 1
+          }));
+        } else if (event.type === 'done') {
+          setScrapeProgress((prev) => ({
+            ...prev,
+            message: event.message || 'Varredura finalizada com sucesso!',
+            percent: 100,
+            totalFound: event.totalFound || prev.totalFound
+          }));
+          setIsScraping(false);
+          sse.close();
+          loadStats();
+          loadJobs();
+        } else if (event.type === 'error') {
+          setScrapeProgress((prev) => ({
+            ...prev,
+            message: `Erro: ${event.message}`
+          }));
+          setIsScraping(false);
+          sse.close();
+        }
+      } catch (err) {
+        console.error('Erro ao processar evento SSE:', err);
+      }
+    };
+
+    sse.onerror = () => {
+      setIsScraping(false);
+      sse.close();
+      loadJobs();
+      loadStats();
+    };
+  };
+
+  const toggleTerm = (term: string) => {
+    if (selectedTerms.includes(term)) {
+      if (selectedTerms.length > 1) {
+        setSelectedTerms(selectedTerms.filter((t) => t !== term));
+      }
+    } else {
+      setSelectedTerms([...selectedTerms, term]);
+    }
+  };
+
+  const addCustomTerm = () => {
+    const t = newCustomTerm.trim().toLowerCase();
+    if (t && !selectedTerms.includes(t)) {
+      setSelectedTerms([...selectedTerms, t]);
+      // Também adiciona na configuração centralizada
+      if (config && !config.searchTerms.includes(t)) {
+        const updatedTerms = [...config.searchTerms, t];
+        fetch('/api/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ searchTerms: updatedTerms })
+        }).then(loadConfig);
+      }
+      setNewCustomTerm('');
+    }
+  };
+
+  const toggleSource = (sourceId: string) => {
+    if (selectedSources.includes(sourceId)) {
+      if (selectedSources.length > 1) {
+        setSelectedSources(selectedSources.filter((s) => s !== sourceId));
+      }
+    } else {
+      setSelectedSources([...selectedSources, sourceId]);
+    }
+  };
+
+  const handleClearDatabase = async () => {
+    if (!confirm('Deseja realmente limpar todas as vagas salvas?')) return;
+    await fetch('/api/jobs', { method: 'DELETE' });
+    setJobs([]);
+    setTotalJobs(0);
+    loadStats();
+  };
+
+  // Filtragem local instantânea
+  const filteredJobs = jobs.filter((j) => {
+    if (searchFilter) {
+      const q = searchFilter.toLowerCase();
+      const match =
+        j.title.toLowerCase().includes(q) ||
+        j.company.toLowerCase().includes(q) ||
+        j.stack.some((s) => s.toLowerCase().includes(q));
+      if (!match) return false;
+    }
+    if (modelFilter !== 'ALL' && j.workModel !== modelFilter) return false;
+    if (contractFilter !== 'ALL' && j.contractType !== contractFilter) return false;
+    if (sourceFilter !== 'ALL' && j.source !== sourceFilter) return false;
+    return true;
+  });
 
   return (
     <>
@@ -15,6 +286,76 @@ function App() {
         <a href="https://react.dev" target="_blank">
           <img src={reactLogo} className="logo react" alt="React logo" />
         </a>
+    <div>
+      {/* Header */}
+      <header className="header">
+        <div className="brand">
+          <div className="brand-icon">
+            <Radio size={24} />
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h1 className="brand-title">S-Job-Crawler</h1>
+              <span className="brand-badge">HIGH-PERFORMANCE</span>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+              Agregador inteligente de vagas (Gupy 134 empresas, RemoteOK, Programathor, 99Freelas, GeekHunter)
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {health && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#94a3b8', background: '#1e293b', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+              <Cpu size={14} color="#10b981" />
+              <span>RAM: {health.memoryUsageMB?.rss || 0} MB</span>
+            </div>
+          )}
+
+          <button className="btn-action" onClick={() => setShowConfigModal(true)}>
+            <Settings size={16} /> Configurações
+          </button>
+
+          <button className="btn-action danger" onClick={handleClearDatabase} title="Limpar banco de vagas">
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </header>
+
+      {/* Estatísticas Rápidas */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: '#3b82f6' }}><Briefcase size={20} /></div>
+          <div>
+            <div className="stat-value">{totalJobs}</div>
+            <div className="stat-label">Vagas no Banco</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: '#10b981' }}><CheckCircle2 size={20} /></div>
+          <div>
+            <div className="stat-value">{stats.byModel?.REMOTO || 0}</div>
+            <div className="stat-label">Vagas Remotas</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: '#8b5cf6' }}><Layers size={20} /></div>
+          <div>
+            <div className="stat-value">{stats.bySource?.GUPY || 0}</div>
+            <div className="stat-label">Vagas Gupy</div>
+          </div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: '#f59e0b' }}><Activity size={20} /></div>
+          <div>
+            <div className="stat-value">{stats.bySource?.FREELAS_99 || stats.bySource?.REMOTEOK || 0}</div>
+            <div className="stat-value">{(stats.bySource?.FREELAS_99 || 0) + (stats.bySource?.REMOTEOK || 0)}</div>
+            <div className="stat-label">Freelance / Global</div>
+          </div>
+        </div>
       </div>
       <h1>Vite + React</h1>
       <div className="card">
@@ -24,12 +365,244 @@ function App() {
         <p>
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
+
+      {/* Painel de Controle de Varredura */}
+      <div className="panel">
+        <div className="panel-title">
+          <span>🎯 Painel de Varredura Unificada</span>
+          <button
+            className="btn-action primary"
+            onClick={startScrape}
+            disabled={isScraping}
+            style={{ opacity: isScraping ? 0.7 : 1 }}
+          >
+            {isScraping ? <RefreshCw size={16} className="animate-spin" /> : <Play size={16} />}
+            {isScraping ? 'Varrendo em Tempo Real...' : 'Iniciar Varredura'}
+          </button>
+        </div>
+
+        <div className="search-form">
+          <div>
+            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.4rem' }}>
+              Selecione as Stacks / Palavras-chave da busca:
+            </label>
+            <div className="tags-container">
+              {(config?.searchTerms || ['java', 'react', 'node', 'fullstack', 'python']).map((term) => (
+                <div
+                  key={term}
+                  className={`tag-badge ${selectedTerms.includes(term) ? 'active' : ''}`}
+                  onClick={() => toggleTerm(term)}
+                >
+                  {term}
+                  {selectedTerms.includes(term) && ' ✓'}
+                </div>
+              ))}
+              <div style={{ display: 'flex', gap: '0.3rem' }}>
+                <input
+                  type="text"
+                  placeholder="+ Novo termo"
+                  value={newCustomTerm}
+                  onChange={(e) => setNewCustomTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addCustomTerm()}
+                  style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '6px', color: 'white', padding: '0.2rem 0.5rem', fontSize: '0.8rem', width: '110px' }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.8rem', color: '#94a3b8', display: 'block', marginBottom: '0.4rem' }}>
+              Plataformas e Fontes Ativas:
+            </label>
+            <div className="sources-grid">
+              {[
+                { id: 'GUPY', label: 'Gupy (134 Empresas)', type: 'CLT' },
+                { id: 'REMOTEOK', label: 'RemoteOK (Global)', type: 'FREELANCE' },
+                { id: 'PROGRAMATHOR', label: 'Programathor', type: 'CLT' },
+                { id: 'FREELAS_99', label: '99Freelas', type: 'FREELANCE' },
+                { id: 'GEEKHUNTER', label: 'GeekHunter', type: 'CLT' }
+              ].map((s) => (
+                <div
+                  key={s.id}
+                  className={`source-checkbox ${selectedSources.includes(s.id) ? 'checked' : ''}`}
+                  onClick={() => toggleSource(s.id)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSources.includes(s.id)}
+                    onChange={() => {}}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span>{s.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
     </>
   )
+
+      {/* Monitor de Execução Streaming SSE */}
+      {isScraping && (
+        <div className="stream-box">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+            <span style={{ color: '#38bdf8' }}>⚡ {scrapeProgress.message}</span>
+            <span style={{ color: '#10b981' }}>{scrapeProgress.totalFound} vagas capturadas</span>
+          </div>
+          {scrapeProgress.currentCompany && (
+            <div style={{ color: '#94a3b8', fontSize: '0.78rem', marginBottom: '0.3rem' }}>
+              Empresa atual: <strong style={{ color: '#f8fafc' }}>{scrapeProgress.currentCompany}</strong>
+            </div>
+          )}
+          <div className="progress-bar-container">
+            <div className="progress-bar-fill" style={{ width: `${scrapeProgress.percent || 15}%` }} />
+          </div>
+        </div>
+      )}
+
+      {/* Barra de Filtros dos Resultados */}
+      <div className="filters-bar">
+        <div style={{ position: 'relative', flex: 1, minWidth: '260px' }}>
+          <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Filtrar vagas por título, empresa ou tecnologia..."
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            style={{ paddingLeft: '36px' }}
+          />
+        </div>
+
+        <select className="select-filter" value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
+          <option value="ALL">Todos os Modelos</option>
+          <option value="REMOTO">Remoto</option>
+          <option value="HIBRIDO">Híbrido</option>
+          <option value="PRESENCIAL">Presencial</option>
+        </select>
+
+        <select className="select-filter" value={contractFilter} onChange={(e) => setContractFilter(e.target.value)}>
+          <option value="ALL">Contrato (Todos)</option>
+          <option value="CLT">CLT</option>
+          <option value="PJ">PJ</option>
+          <option value="FREELANCER">Freelancer / Projeto</option>
+        </select>
+
+        <select className="select-filter" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
+          <option value="ALL">Todas as Fontes</option>
+          <option value="GUPY">Gupy</option>
+          <option value="REMOTEOK">RemoteOK</option>
+          <option value="PROGRAMATHOR">Programathor</option>
+          <option value="FREELAS_99">99Freelas</option>
+          <option value="GEEKHUNTER">GeekHunter</option>
+        </select>
+      </div>
+
+      {/* Grid de Vagas */}
+      {filteredJobs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', background: '#1e293b', borderRadius: '12px', border: '1px dashed #334155' }}>
+          <Briefcase size={36} color="#64748b" style={{ margin: '0 auto 0.8rem' }} />
+          <p style={{ color: '#94a3b8', fontSize: '1rem', fontWeight: 500 }}>Nenhuma vaga encontrada para os filtros atuais.</p>
+          <p style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.3rem' }}>
+            Clique em "Iniciar Varredura" para coletar oportunidades em tempo real!
+          </p>
+        </div>
+      ) : (
+        <div className="jobs-grid">
+          {filteredJobs.map((job) => (
+            <div key={job.id} className="job-card">
+              <div>
+                <div className="job-header">
+                  <h3 className="job-title">{job.title}</h3>
+                  <span className={`source-badge ${job.source.toLowerCase()}`}>{job.source}</span>
+                </div>
+
+                <div className="job-company">
+                  <Building size={13} style={{ display: 'inline', marginRight: '4px', verticalAlign: '-1px' }} />
+                  {job.company}
+                </div>
+
+                <div className="job-badges">
+                  {job.workModel === 'REMOTO' && <span className="badge remote">Remoto</span>}
+                  {job.workModel === 'HIBRIDO' && <span className="badge hybrid">Híbrido</span>}
+                  {job.workModel === 'PRESENCIAL' && <span className="badge onsite">Presencial</span>}
+
+                  {job.seniorityLevel !== 'NAO_INFORMADO' && (
+                    <span className="badge seniority">{job.seniorityLevel}</span>
+                  )}
+
+                  <span className="badge clt">{job.contractType}</span>
+
+                  <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                    <MapPin size={11} /> {job.location}
+                  </span>
+                </div>
+
+                {job.stack && job.stack.length > 0 && (
+                  <div className="job-stack">
+                    {job.stack.slice(0, 6).map((tech) => (
+                      <span key={tech} className="stack-pill">{tech}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <a
+                  href={job.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-apply"
+                >
+                  Ver Vaga e Candidatar-se <ExternalLink size={14} />
+                </a>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal de Configuração */}
+      {showConfigModal && config && (
+        <div className="modal-overlay" onClick={() => setShowConfigModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>⚙️ Configuração Centralizada de Busca</h2>
+              <button onClick={() => setShowConfigModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '1rem' }}>
+              Arquivo de configuração salvo em: <code style={{ color: '#38bdf8' }}>config/search.config.json</code>
+            </p>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Empresas Gupy Cadastradas ({config.gupyCompanies?.length || 0}):</h4>
+              <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#0f172a', padding: '0.5rem', borderRadius: '8px', border: '1px solid #334155', fontSize: '0.8rem' }}>
+                {config.gupyCompanies?.map((c, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', borderBottom: '1px solid #1e293b' }}>
+                    <span>{c.name}</span>
+                    <span style={{ color: '#64748b' }}>{c.slug}.gupy.io</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="btn-action primary" onClick={() => setShowConfigModal(false)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default App

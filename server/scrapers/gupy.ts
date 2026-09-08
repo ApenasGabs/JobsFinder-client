@@ -1,0 +1,184 @@
+import { BaseScraper } from './base.js';
+import { Job, ScrapeOptions, WorkModel } from '../types.js';
+import { ConfigService } from '../services/config.js';
+import { runWithConcurrency } from '../utils/pool.js';
+import { detectSeniority, detectWorkModel, detectContractType, extractStack } from '../utils/normalizer.js';
+import { StorageService } from '../services/storage.js';
+
+interface GupyJobResponseItem {
+  id?: number | string;
+interface GupyRawJob {
+  id: number | string;
+  title?: string;
+  name?: string;
+  title?: string;
+  type?: string;
+  department?: string;
+  careerPageUrl?: string;
+  jobUrl?: string;
+  workplaceType?: string;
+  type?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  publishedDate?: string;
+  workplace?: {
+    address?: {
+      city?: string;
+      state?: string;
+      stateShortName?: string;
+      country?: string;
+    };
+    workplaceType?: string;
+  };
+  description?: string;
+}
+
+export class GupyScraper implements BaseScraper {
+  public readonly id = 'GUPY';
+  public readonly name = 'Gupy (134 Empresas)';
+  public readonly type = 'CLT' as const;
+  public readonly isFastMode = true;
+
+  public async scrape(
+    options: ScrapeOptions,
+    onJobFound: (job: Job) => void,
+    onProgress?: (progress: { message: string; currentCompany?: string; percent?: number }) => void
+  ): Promise<Job[]> {
+    const config = ConfigService.getConfig();
+    const companies = config.gupyCompanies.filter((c) => c.enabled !== false);
+    const keywords = options.keywords && options.keywords.length > 0 ? options.keywords : [''];
+    const keywords = (options.keywords || []).map((k) => k.toLowerCase().trim()).filter(Boolean);
+
+    const foundJobs: Job[] = [];
+    let completedCount = 0;
+
+    const concurrency = options.concurrency || 8; // 8 conexões HTTP simultâneas
+    const concurrency = options.concurrency || 10; // 10 conexões assíncronas paralelas
+
+    await runWithConcurrency(companies, concurrency, async (company, index) => {
+      for (const query of keywords) {
+        try {
+          const searchParam = query ? `&jobName=${encodeURIComponent(query)}` : '';
+          const apiUrl = `https://${company.slug}.gupy.io/api/v1/jobs?limit=50&offset=0${searchParam}`;
+    await runWithConcurrency(companies, concurrency, async (company) => {
+      try {
+        const portalUrl = company.link ? company.link.replace(/\/$/, '') : `https://${company.slug}.gupy.io`;
+
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 6000);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+
+          const response = await fetch(apiUrl, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Accept': 'application/json, text/plain, */*',
+              'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+            },
+            signal: controller.signal
+          });
+          clearTimeout(timeout);
+        const response = await fetch(portalUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timeout);
+
+          if (response.ok) {
+            const data = await response.json();
+            const rawList: GupyJobResponseItem[] = Array.isArray(data) ? data : data.data || [];
+        if (response.ok) {
+          const html = await response.text();
+          const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+
+            for (const item of rawList) {
+              const title = item.name || item.title || 'Vaga sem título';
+              const jobUrl = item.careerPageUrl || item.jobUrl || `${company.link}/job/${item.id}`;
+              
+              let model: WorkModel = 'NAO_INFORMADO';
+              if (item.workplaceType) {
+                const wp = item.workplaceType.toLowerCase();
+                if (wp.includes('remote') || wp.includes('remoto')) model = 'REMOTO';
+                else if (wp.includes('hybrid') || wp.includes('hibrid') || wp.includes('híbrido')) model = 'HIBRIDO';
+                else if (wp.includes('on-site') || wp.includes('onsite') || wp.includes('presencial')) model = 'PRESENCIAL';
+          if (nextDataMatch) {
+            const nextData = JSON.parse(nextDataMatch[1]);
+            const jobsList: GupyRawJob[] = nextData.props?.pageProps?.jobs || [];
+
+            for (const item of jobsList) {
+              const title = item.title || item.name || 'Vaga sem título';
+              const textToMatch = `${title} ${item.department || ''} ${item.type || ''}`.toLowerCase();
+
+              // Se houver filtro de palavra-chave, verifica se bate com algum dos termos
+              if (keywords.length > 0) {
+                const matches = keywords.some((k) => textToMatch.includes(k));
+                if (!matches) continue;
+              }
+              if (model === 'NAO_INFORMADO') {
+                model = detectWorkModel(title);
+              }
+
+              const locationParts = [item.city, item.state, item.country || 'Brasil'].filter(Boolean);
+              let model: WorkModel = 'NAO_INFORMADO';
+              const wpType = item.workplace?.workplaceType?.toLowerCase();
+              if (wpType === 'remote') model = 'REMOTO';
+              else if (wpType === 'hybrid') model = 'HIBRIDO';
+              else if (wpType === 'on-site' || wpType === 'onsite') model = 'PRESENCIAL';
+              else model = detectWorkModel(title);
+
+              const addr = item.workplace?.address;
+              const locationParts = [addr?.city, addr?.stateShortName || addr?.state, addr?.country || 'Brasil'].filter(Boolean);
+              const location = locationParts.join(', ') || 'Brasil';
+
+              const contractType = detectContractType(item.type || title, 'CLT');
+              const seniorityLevel = detectSeniority(title);
+              const stack = extractStack(`${title} ${item.description || ''}`);
+              const stack = extractStack(`${title} ${item.department || ''}`);
+              const jobUrl = item.careerPageUrl || `${portalUrl}/job/${item.id}`;
+
+              const jobData = {
+                title,
+                company: company.name,
+                location,
+                workModel: model,
+                contractType,
+                seniorityLevel,
+                url: jobUrl,
+                source: 'GUPY',
+                stack,
+                description: item.description || ''
+                description: `Departamento: ${item.department || 'Geral'} | Tipo: ${item.type || 'Efetivo'}`
+              };
+
+              const { job } = StorageService.upsertJob(jobData);
+              foundJobs.push(job);
+              onJobFound(job);
+            }
+          }
+        } catch (err) {
+          // Ignora silenciosamente empresas individuais que podem falhar ou dar timeout
+        }
+      } catch {
+        // Ignora silenciosamente empresas individuais que podem falhar ou dar timeout
+      }
+
+      completedCount++;
+      if (onProgress) {
+        const percent = Math.round((completedCount / companies.length) * 100);
+        onProgress({
+          message: `Consultando Gupy: ${completedCount}/${companies.length} empresas`,
+          currentCompany: company.name,
+          percent
+        });
+      }
+    });
+
+    return foundJobs;
+  }
+}
+
