@@ -1,13 +1,13 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import crypto from 'crypto';
-import { Job, SeniorityLevel, WorkModel, ContractType } from '../types.js';
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import { ContractType, Job, SeniorityLevel, WorkModel } from "../types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.resolve(__dirname, '../../data');
-const DATA_FILE = path.join(DATA_DIR, 'jobs.json');
+const DATA_DIR = path.resolve(__dirname, "../../data");
+const DATA_FILE = path.join(DATA_DIR, "jobs.json");
 
 export class StorageService {
   private static jobsMap: Map<string, Job> = new Map();
@@ -23,35 +23,50 @@ export class StorageService {
       }
 
       if (fs.existsSync(DATA_FILE)) {
-        const content = fs.readFileSync(DATA_FILE, 'utf-8');
+        const content = fs.readFileSync(DATA_FILE, "utf-8");
         const jobs: Job[] = JSON.parse(content);
         for (const job of jobs) {
           this.jobsMap.set(job.id, job);
         }
-        console.log(`[Storage] Carregadas ${this.jobsMap.size} vagas do armazenamento local.`);
+        console.log(
+          `[Storage] Carregadas ${this.jobsMap.size} vagas do armazenamento local.`,
+        );
       }
     } catch (err) {
-      console.error('[Storage] Erro ao carregar vagas:', err);
+      console.error("[Storage] Erro ao carregar vagas:", err);
     }
     this.isInitialized = true;
   }
 
-  public static generateJobId(source: string, url: string, title: string, company: string): string {
+  public static generateJobId(
+    source: string,
+    url: string,
+    title: string,
+    company: string,
+  ): string {
     const raw = `${source.toLowerCase()}:${url.trim() || `${company}:${title}`}`;
-    return crypto.createHash('md5').update(raw).digest('hex');
+    return crypto.createHash("md5").update(raw).digest("hex");
   }
 
-  public static upsertJob(jobData: Omit<Job, 'id'>): { job: Job; isNew: boolean } {
+  public static upsertJob(jobData: Omit<Job, "id">): {
+    job: Job;
+    isNew: boolean;
+  } {
     this.initialize();
 
-    const id = this.generateJobId(jobData.source, jobData.url, jobData.title, jobData.company);
+    const id = this.generateJobId(
+      jobData.source,
+      jobData.url,
+      jobData.title,
+      jobData.company,
+    );
     const existing = this.jobsMap.get(id);
 
     const job: Job = {
       ...jobData,
       id,
       scrapedAt: existing ? existing.scrapedAt : new Date().toISOString(),
-      notifiedAt: existing?.notifiedAt ?? null
+      notifiedAt: existing?.notifiedAt ?? null,
     };
 
     const isNew = !existing;
@@ -84,7 +99,9 @@ export class StorageService {
     }
     if (changed) {
       this.scheduleSave(0);
-      console.log('[Storage] Cold Start: Todas as vagas pré-existentes foram marcadas como notificadas.');
+      console.log(
+        "[Storage] Cold Start: Todas as vagas pré-existentes foram marcadas como notificadas.",
+      );
     }
   }
 
@@ -93,7 +110,10 @@ export class StorageService {
     return Array.from(this.jobsMap.values()).filter((j) => !j.notifiedAt);
   }
 
-  public static upsertBatch(jobs: Array<Omit<Job, 'id'>>): { totalSaved: number; totalUpdated: number } {
+  public static upsertBatch(jobs: Array<Omit<Job, "id">>): {
+    totalSaved: number;
+    totalUpdated: number;
+  } {
     let totalSaved = 0;
     let totalUpdated = 0;
 
@@ -129,19 +149,21 @@ export class StorageService {
             j.title.toLowerCase().includes(q) ||
             j.company.toLowerCase().includes(q) ||
             j.stack.some((s) => s.toLowerCase().includes(q)) ||
-            (j.description && j.description.toLowerCase().includes(q))
+            (j.description && j.description.toLowerCase().includes(q)),
         );
       }
 
-      if (source && source !== 'ALL') {
-        all = all.filter((j) => j.source.toUpperCase() === source.toUpperCase());
+      if (source && source !== "ALL") {
+        all = all.filter(
+          (j) => j.source.toUpperCase() === source.toUpperCase(),
+        );
       }
 
-      if (workModel && workModel !== 'NAO_INFORMADO') {
+      if (workModel && workModel !== "NAO_INFORMADO") {
         all = all.filter((j) => j.workModel === workModel);
       }
 
-      if (seniority && seniority !== 'NAO_INFORMADO') {
+      if (seniority && seniority !== "NAO_INFORMADO") {
         all = all.filter((j) => j.seniorityLevel === seniority);
       }
 
@@ -151,7 +173,10 @@ export class StorageService {
     }
 
     // Ordena pelas mais recentes
-    all.sort((a, b) => new Date(b.scrapedAt).getTime() - new Date(a.scrapedAt).getTime());
+    all.sort(
+      (a, b) =>
+        new Date(b.scrapedAt).getTime() - new Date(a.scrapedAt).getTime(),
+    );
 
     const page = Math.max(1, filters?.page || 1);
     const pageSize = Math.max(1, filters?.pageSize || 20);
@@ -163,7 +188,7 @@ export class StorageService {
       jobs: paginated,
       total,
       page,
-      pageSize
+      pageSize,
     };
   }
 
@@ -185,7 +210,7 @@ export class StorageService {
       totalJobs: jobs.length,
       bySource,
       byModel,
-      bySeniority
+      bySeniority,
     };
   }
 
@@ -209,11 +234,12 @@ export class StorageService {
         fs.mkdirSync(DATA_DIR, { recursive: true });
       }
       const data = JSON.stringify(Array.from(this.jobsMap.values()), null, 2);
-      fs.writeFileSync(DATA_FILE, data, 'utf-8');
-      console.log(`[Storage] Persistidas ${this.jobsMap.size} vagas em ${DATA_FILE}`);
+      fs.writeFileSync(DATA_FILE, data, "utf-8");
+      console.log(
+        `[Storage] Persistidas ${this.jobsMap.size} vagas em ${DATA_FILE}`,
+      );
     } catch (err) {
-      console.error('[Storage] Erro ao salvar arquivo JSON:', err);
+      console.error("[Storage] Erro ao salvar arquivo JSON:", err);
     }
   }
 }
-

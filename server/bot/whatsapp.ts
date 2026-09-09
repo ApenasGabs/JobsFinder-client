@@ -25,6 +25,8 @@ export class WhatsAppBot {
   private static isStarting = false;
   private static messageQueue: Job[] = [];
   private static isProcessingQueue = false;
+  private static cachedGroups: Array<{ id: string; subject: string; participants: number }> = [];
+  private static lastGroupsFetch = 0;
 
   public static async initialize(): Promise<void> {
     if (this.sock || this.isStarting) return;
@@ -119,21 +121,49 @@ export class WhatsAppBot {
 
   /**
    * Retorna os grupos em que o bot é participante para selecionar na UI
+   * Usa cache em memória para evitar erro 'rate-overlimit' do WhatsApp
    */
-  public static async getParticipatingGroups(): Promise<Array<{ id: string; subject: string; participants: number }>> {
+  public static async getParticipatingGroups(forceRefresh = false): Promise<Array<{ id: string; subject: string; participants: number }>> {
+    const config = ConfigService.getConfig();
+    const configuredJid = config.whatsapp?.targetGroupJid;
+    const configuredName = config.whatsapp?.targetGroupName;
+
     if (!this.sock || this.status !== 'connected') {
-      return [];
+      if (this.cachedGroups.length === 0 && configuredJid) {
+        return [{ id: configuredJid, subject: configuredName || 'Grupo Configurado', participants: 0 }];
+      }
+      return this.cachedGroups;
+    }
+
+    const now = Date.now();
+    // Cache de 3 minutos para evitar estourar o limite de requisições do WhatsApp
+    if (!forceRefresh && this.cachedGroups.length > 0 && (now - this.lastGroupsFetch < 180000)) {
+      return this.cachedGroups;
+    }
+
+    // Se for forceRefresh, aplica um throttle de segurança de 10 segundos
+    if (forceRefresh && (now - this.lastGroupsFetch < 10000) && this.cachedGroups.length > 0) {
+      return this.cachedGroups;
     }
 
     try {
       const groups = await this.sock.groupFetchAllParticipating();
-      return Object.values(groups).map((g) => ({
+      this.cachedGroups = Object.values(groups).map((g) => ({
         id: g.id,
         subject: g.subject,
         participants: g.participants?.length || 0
       }));
-    } catch (err) {
-      console.error('[WhatsApp] Erro ao buscar grupos participantes:', err);
+      this.lastGroupsFetch = now;
+      return this.cachedGroups;
+    } catch (err: any) {
+      console.warn('[WhatsApp] Aviso ao buscar grupos participantes:', err?.message || err);
+      // Se deu rate limit ou erro de rede, preserva o cache anterior em vez de zerar
+      if (this.cachedGroups.length > 0) {
+        return this.cachedGroups;
+      }
+      if (configuredJid) {
+        return [{ id: configuredJid, subject: configuredName || 'Grupo Configurado', participants: 0 }];
+      }
       return [];
     }
   }

@@ -1,25 +1,26 @@
-import { useState, useEffect, useRef } from 'react';
 import {
-  Search,
+  Activity,
+  Briefcase,
+  Building,
+  CheckCircle2,
+  Clock,
+  Cpu,
+  ExternalLink,
+  Layers,
+  MapPin,
+  MessageSquare,
   Play,
+  QrCode,
+  Radio,
+  RefreshCw,
+  Save,
+  Search,
+  Send,
   Settings,
   Trash2,
-  ExternalLink,
-  Briefcase,
-  Layers,
-  Activity,
-  CheckCircle2,
-  RefreshCw,
-  Cpu,
-  MapPin,
-  Building,
-  Radio,
-  X,
-  MessageSquare,
-  QrCode,
-  Clock,
-  Send
+  X
 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 
 interface Job {
   id: string;
@@ -82,6 +83,11 @@ export default function App() {
     targetGroupJid: ''
   });
   const [groups, setGroups] = useState<Array<{ id: string; subject: string; participants: number }>>([]);
+  const [selectedGroupJid, setSelectedGroupJid] = useState('');
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
+  const [groupSaveMsg, setGroupSaveMsg] = useState<string | null>(null);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const hasLoadedGroupsRef = useRef(false);
   const [showQrModal, setShowQrModal] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testResultMsg, setTestResultMsg] = useState<string | null>(null);
@@ -178,8 +184,13 @@ export default function App() {
       if (res.ok) {
         const data: WhatsAppStatus = await res.json();
         setWaStatus(data);
-        if (data.status === 'connected') {
-          loadWhatsAppGroups();
+        if (data.targetGroupJid) {
+          setSelectedGroupJid((prev) => prev || data.targetGroupJid || '');
+        }
+        // Carrega grupos apenas uma vez na conexão inicial para não estourar rate limit
+        if (data.status === 'connected' && !hasLoadedGroupsRef.current) {
+          hasLoadedGroupsRef.current = true;
+          loadWhatsAppGroups(false);
         }
       }
     } catch {
@@ -187,33 +198,52 @@ export default function App() {
     }
   };
 
-  const loadWhatsAppGroups = async () => {
+  const loadWhatsAppGroups = async (force = false) => {
+    setIsLoadingGroups(true);
     try {
-      const res = await fetch('/api/whatsapp/groups');
+      const res = await fetch('/api/whatsapp/groups' + (force ? '?force=true' : ''));
       if (res.ok) {
         const data = await res.json();
-        setGroups(data.groups || []);
+        if (Array.isArray(data.groups) && data.groups.length > 0) {
+          setGroups(data.groups);
+        }
       }
     } catch (err) {
       console.error('Erro ao carregar grupos WhatsApp:', err);
+    } finally {
+      setIsLoadingGroups(false);
     }
   };
 
-  const handleSelectGroup = async (groupJid: string, groupName: string) => {
+  const handleSaveGroup = async () => {
+    if (!selectedGroupJid) return;
+    setIsSavingGroup(true);
+    setGroupSaveMsg(null);
     try {
-      await fetch('/api/whatsapp/config', {
+      const selected = groups.find((g) => g.id === selectedGroupJid);
+      const groupName = selected?.subject || waStatus.targetGroupName || 'Grupo Selecionado';
+      const res = await fetch('/api/whatsapp/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           enabled: true,
-          targetGroupJid: groupJid,
+          targetGroupJid: selectedGroupJid,
           targetGroupName: groupName
         })
       });
-      loadWhatsAppStatus();
-      loadConfig();
-    } catch (err) {
+      if (res.ok) {
+        setGroupSaveMsg(`✅ Grupo "${groupName}" salvo e mantido como destino das vagas!`);
+        await loadWhatsAppStatus();
+        await loadConfig();
+        setTimeout(() => setGroupSaveMsg(null), 6000);
+      } else {
+        setGroupSaveMsg('❌ Erro ao salvar grupo no servidor.');
+      }
+    } catch (err: any) {
       console.error('Erro ao salvar grupo WhatsApp:', err);
+      setGroupSaveMsg(`❌ Erro: ${err?.message || 'Falha ao salvar'}`);
+    } finally {
+      setIsSavingGroup(false);
     }
   };
 
@@ -443,49 +473,86 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
-            {waStatus.status === 'connected' && (
-              <>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                  <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Grupo de Destino:</label>
-                  <select
-                    className="select-filter"
-                    value={waStatus.targetGroupJid || ''}
-                    onChange={(e) => {
-                      const selected = groups.find((g) => g.id === e.target.value);
-                      handleSelectGroup(e.target.value, selected?.subject || '');
-                    }}
-                    style={{ minWidth: '220px' }}
-                  >
-                    <option value="">Selecione um grupo...</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>
-                        {g.subject} ({g.participants} membros)
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  className="btn-action"
-                  onClick={handleTestWhatsApp}
-                  disabled={testSending || !waStatus.targetGroupJid}
-                  style={{ marginTop: '1rem' }}
-                >
-                  <Send size={14} /> {testSending ? 'Enviando...' : 'Testar Envio'}
-                </button>
-              </>
-            )}
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#94a3b8', background: '#020617', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid #1e293b', marginTop: waStatus.status === 'connected' ? '1rem' : 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#94a3b8', background: '#020617', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid #1e293b' }}>
               <Clock size={14} color="#38bdf8" />
               <span>Scheduler: A cada 30 min</span>
             </div>
           </div>
         </div>
 
-        {testResultMsg && (
-          <div style={{ marginTop: '0.8rem', padding: '0.5rem 0.8rem', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid #3b82f6', fontSize: '0.8rem', color: '#93c5fd' }}>
-            {testResultMsg}
+        {waStatus.status === 'connected' && (
+          <div style={{ marginTop: '1rem', background: '#0f172a', padding: '1rem', borderRadius: '10px', border: '1px solid #334155' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.8rem', marginBottom: '0.8rem' }}>
+              <div>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'block' }}>Grupo Ativo para Notificações 24/7:</span>
+                <strong style={{ fontSize: '0.9rem', color: waStatus.targetGroupJid ? '#34d399' : '#f59e0b' }}>
+                  {waStatus.targetGroupJid ? `🟢 ${waStatus.targetGroupName || waStatus.targetGroupJid}` : '🟡 Nenhum grupo selecionado ainda (selecione abaixo e clique em Salvar)'}
+                </strong>
+              </div>
+
+              <button
+                className="btn-action"
+                onClick={() => loadWhatsAppGroups(true)}
+                disabled={isLoadingGroups}
+                style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem' }}
+                title="Buscar grupos atualizados do WhatsApp"
+              >
+                <RefreshCw size={13} className={isLoadingGroups ? 'animate-spin' : ''} />
+                {isLoadingGroups ? 'Buscando Grupos...' : 'Recarregar Grupos'}
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              <select
+                className="select-filter"
+                value={selectedGroupJid}
+                onChange={(e) => setSelectedGroupJid(e.target.value)}
+                style={{ minWidth: '260px', flex: 1 }}
+              >
+                <option value="">Selecione o grupo que receberá as vagas...</option>
+                {waStatus.targetGroupJid && !groups.some((g) => g.id === waStatus.targetGroupJid) && (
+                  <option value={waStatus.targetGroupJid}>
+                    {waStatus.targetGroupName || 'Grupo Atual'} (Salvo no Servidor)
+                  </option>
+                )}
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.subject} ({g.participants} membros)
+                  </option>
+                ))}
+              </select>
+
+              <button
+                className="btn-action primary"
+                onClick={handleSaveGroup}
+                disabled={isSavingGroup || !selectedGroupJid || selectedGroupJid === waStatus.targetGroupJid}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <Save size={14} />
+                {isSavingGroup ? 'Salvando...' : selectedGroupJid && selectedGroupJid === waStatus.targetGroupJid ? 'Salvo ✓' : 'Salvar Grupo'}
+              </button>
+
+              <button
+                className="btn-action"
+                onClick={handleTestWhatsApp}
+                disabled={testSending || !waStatus.targetGroupJid}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                <Send size={14} /> {testSending ? 'Enviando...' : 'Testar Envio'}
+              </button>
+            </div>
+
+            {groupSaveMsg && (
+              <div style={{ marginTop: '0.8rem', padding: '0.5rem 0.8rem', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', fontSize: '0.8rem', color: '#6ee7b7' }}>
+                {groupSaveMsg}
+              </div>
+            )}
+
+            {testResultMsg && (
+              <div style={{ marginTop: '0.8rem', padding: '0.5rem 0.8rem', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid #3b82f6', fontSize: '0.8rem', color: '#93c5fd' }}>
+                {testResultMsg}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -589,16 +656,16 @@ export default function App() {
                   <input
                     type="checkbox"
                     checked={selectedSources.includes(s.id)}
-                    onChange={() => {}}
+                    onChange={() => { }}
                     style={{ cursor: 'pointer' }}
                   />
                   <span>{s.label}</span>
                 </div>
               ))}
             </div>
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Monitor de Execução Streaming SSE */}
       {isScraping && (
