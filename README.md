@@ -35,7 +35,6 @@ curl -fsSL https://raw.githubusercontent.com/ApenasGabs/JobsFinder-client/main/d
 > **Nota:** Se você renomear ou trocar a URL do repositório no futuro, basta passar a variável `REPO_URL`:
 > ```bash
 > REPO_URL="https://github.com/SEU_USUARIO/NOVO_REPO.git" bash -c "$(curl -fsSL https://raw.githubusercontent.com/.../deploy.sh)"
-> ```
 ---
 
 ## 🖥️ Instalação Direta no ZimaOS via Interface Web (Add Custom App)
@@ -49,8 +48,6 @@ Se você não quer usar terminal/SSH e quer apenas colar um YAML no ZimaOS:
 5. **O container baixará automaticamente o repositório**, preparará o ambiente e criará o ícone do **S-Job-Crawler** direto na tela inicial do seu ZimaOS!
 
 ---
-
-## 🐳 Executando Manualmente no ZimaOS (Docker Compose)
 
 ### 1. Iniciar Tudo no ZimaOS (Aplicação + Lightpanda local)
 
