@@ -44,7 +44,22 @@ export interface WhatsAppConfig {
   enabled: boolean;
   targetGroupJid: string; // Ex: '120363xxxxxx@g.us'
   targetGroupName?: string;
-  sendDigestIfMoreThan: number; // Ex: se > 5 vagas de uma vez, envia em resumo
+  targetCategories?: string[]; // Ex: ['ESTAGIO', 'JUNIOR'] ou ['TODAS']
+  batchSize?: number; // Ex: 3 vagas por bloco
+  batchIntervalMinutes?: number; // Ex: 5 minutos entre blocos
+}
+
+export interface WhatsAppStatus {
+  status: 'disconnected' | 'connecting' | 'connected';
+  botNumber: string | null;
+  qrCode: string | null;
+  enabled?: boolean;
+  targetGroupJid?: string;
+  targetGroupName?: string;
+  targetCategories?: string[];
+  queuePendingCount?: number;
+  isProcessingQueue?: boolean;
+  nextBatchRemainingSeconds?: number;
 }
 
 export interface SchedulerConfig {

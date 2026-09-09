@@ -50,6 +50,9 @@ interface AppConfig {
     targetGroupJid: string;
     targetGroupName?: string;
     sendDigestIfMoreThan: number;
+    targetCategories?: string[];
+    batchSize?: number;
+    batchIntervalMinutes?: number;
   };
   scheduler?: {
     enabled: boolean;
@@ -65,6 +68,10 @@ interface WhatsAppStatus {
   enabled: boolean;
   targetGroupJid: string;
   targetGroupName?: string;
+  targetCategories?: string[];
+  queuePendingCount?: number;
+  isProcessingQueue?: boolean;
+  nextBatchRemainingSeconds?: number;
 }
 
 export default function App() {
@@ -80,7 +87,11 @@ export default function App() {
     botNumber: null,
     qrCode: null,
     enabled: false,
-    targetGroupJid: ''
+    targetGroupJid: '',
+    targetCategories: ['TODAS'],
+    queuePendingCount: 0,
+    isProcessingQueue: false,
+    nextBatchRemainingSeconds: 0
   });
   const [groups, setGroups] = useState<Array<{ id: string; subject: string; participants: number }>>([]);
   const [selectedGroupJid, setSelectedGroupJid] = useState('');
@@ -92,11 +103,20 @@ export default function App() {
   const [testSending, setTestSending] = useState(false);
   const [testResultMsg, setTestResultMsg] = useState<string | null>(null);
 
+  // Disparo manual por categoria e controle de fila
+  const [dispatchCategory, setDispatchCategory] = useState('ESTAGIO');
+  const [pendingCategoryCount, setPendingCategoryCount] = useState(0);
+  const [isDispatching, setIsDispatching] = useState(false);
+  const [dispatchResultMsg, setDispatchResultMsg] = useState<string | null>(null);
+  const [isSavingCategories, setIsSavingCategories] = useState(false);
+  const [categorySaveMsg, setCategorySaveMsg] = useState<string | null>(null);
+
   // Filtros de busca local
   const [searchFilter, setSearchFilter] = useState('');
   const [modelFilter, setModelFilter] = useState('ALL');
   const [contractFilter, setContractFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState('ALL');
+  const [notifiedFilter, setNotifiedFilter] = useState<'ALL' | 'PENDING' | 'NOTIFIED'>('ALL');
 
   // Parâmetros de execução do crawler
   const [selectedTerms, setSelectedTerms] = useState<string[]>(['java', 'react', 'node']);
@@ -122,14 +142,28 @@ export default function App() {
     loadJobs();
     loadStats();
     loadWhatsAppStatus();
+    loadPendingCount(dispatchCategory);
 
     const interval = setInterval(() => {
       loadHealth();
       loadWhatsAppStatus();
+      loadPendingCount(dispatchCategory);
     }, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [dispatchCategory]);
+
+  const loadPendingCount = async (cat = dispatchCategory) => {
+    try {
+      const res = await fetch(`/api/jobs/pending-count?category=${encodeURIComponent(cat)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setPendingCategoryCount(data.count ?? 0);
+      }
+    } catch {
+      // Falha silenciosa
+    }
+  };
 
   const loadHealth = async () => {
     try {
@@ -258,6 +292,87 @@ export default function App() {
       setTestResultMsg(`Erro: ${err?.message || 'Falha de conexão'}`);
     } finally {
       setTestSending(false);
+    }
+  };
+
+  const handleDispatchCategory = async () => {
+    setIsDispatching(true);
+    setDispatchResultMsg(null);
+    try {
+      const res = await fetch('/api/whatsapp/dispatch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: dispatchCategory })
+      });
+      const data = await res.json();
+      setDispatchResultMsg(data.message || (data.enqueued ? `${data.enqueued} vagas enfileiradas!` : 'Disparo concluído'));
+      await loadWhatsAppStatus();
+      await loadJobs();
+      await loadPendingCount(dispatchCategory);
+      setTimeout(() => setDispatchResultMsg(null), 8000);
+    } catch (err: any) {
+      setDispatchResultMsg(`Erro: ${err?.message || 'Falha ao disparar vagas'}`);
+    } finally {
+      setIsDispatching(false);
+    }
+  };
+
+  const handleToggleJobNotified = async (jobId: string, currentNotified: boolean) => {
+    // Atualização otimista imediata na UI
+    const newNotifiedAt = currentNotified ? null : new Date().toISOString();
+    setJobs((prev) =>
+      prev.map((j) => (j.id === jobId ? { ...j, notifiedAt: newNotifiedAt } : j))
+    );
+    try {
+      const res = await fetch(`/api/jobs/${jobId}/notified`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notified: !currentNotified })
+      });
+      if (!res.ok) {
+        await loadJobs();
+      } else {
+        loadPendingCount(dispatchCategory);
+      }
+    } catch {
+      await loadJobs();
+    }
+  };
+
+  const handleToggleTargetCategory = async (cat: string) => {
+    const currentCats = waStatus.targetCategories || ['TODAS'];
+    let newCats: string[];
+    if (cat === 'TODAS') {
+      newCats = currentCats.includes('TODAS') ? ['ESTAGIO'] : ['TODAS'];
+    } else {
+      const filtered = currentCats.filter((c) => c !== 'TODAS' && c !== 'ALL');
+      if (filtered.includes(cat)) {
+        newCats = filtered.filter((c) => c !== cat);
+        if (newCats.length === 0) newCats = ['TODAS'];
+      } else {
+        newCats = [...filtered, cat];
+      }
+    }
+
+    setIsSavingCategories(true);
+    setCategorySaveMsg(null);
+    try {
+      const res = await fetch('/api/whatsapp/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetCategories: newCats
+        })
+      });
+      if (res.ok) {
+        setWaStatus((prev) => ({ ...prev, targetCategories: newCats }));
+        setCategorySaveMsg('Categorias salvas com sucesso!');
+        setTimeout(() => setCategorySaveMsg(null), 4000);
+      }
+    } catch (err: any) {
+      console.error('Erro ao salvar categorias automáticas:', err);
+    } finally {
+      setIsSavingCategories(false);
     }
   };
 
@@ -398,6 +513,8 @@ export default function App() {
     if (modelFilter !== 'ALL' && j.workModel !== modelFilter) return false;
     if (contractFilter !== 'ALL' && j.contractType !== contractFilter) return false;
     if (sourceFilter !== 'ALL' && j.source !== sourceFilter) return false;
+    if (notifiedFilter === 'PENDING' && j.notifiedAt) return false;
+    if (notifiedFilter === 'NOTIFIED' && !j.notifiedAt) return false;
     return true;
   });
 
@@ -553,6 +670,120 @@ export default function App() {
                 {testResultMsg}
               </div>
             )}
+
+            {/* Fila de Envio e Cadência Anti-Ban */}
+            {Boolean(waStatus.queuePendingCount && waStatus.queuePendingCount > 0) && (
+              <div style={{ marginTop: '1rem', background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '8px', padding: '0.8rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.6rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <Send size={18} color="#60a5fa" className={waStatus.isProcessingQueue ? 'animate-bounce' : ''} />
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', color: '#93c5fd', display: 'block' }}>
+                      Fila de Envio Ativa: {waStatus.queuePendingCount} vaga(s) aguardando envio
+                    </strong>
+                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                      {waStatus.isProcessingQueue
+                        ? '🚀 Despachando lote atual (3 mensagens completas espaçadas por 5s)...'
+                        : waStatus.nextBatchRemainingSeconds && waStatus.nextBatchRemainingSeconds > 0
+                        ? `⏳ Intervalo anti-ban: Próximo lote de 3 vagas em ${Math.floor(waStatus.nextBatchRemainingSeconds / 60)}m ${waStatus.nextBatchRemainingSeconds % 60}s`
+                        : 'Aguardando liberação do próximo lote...'}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.75rem', background: '#1e293b', padding: '0.3rem 0.6rem', borderRadius: '6px', color: '#38bdf8', border: '1px solid #334155' }}>
+                  Lotes de 3 vagas a cada 5 min
+                </div>
+              </div>
+            )}
+
+            {/* Disparo Manual de Mensagens por Categoria */}
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #334155' }}>
+              <div style={{ marginBottom: '0.6rem' }}>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Send size={15} color="#10b981" /> Disparo de Vagas por Categoria
+                </h4>
+                <p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>
+                  Selecione a categoria de vagas e dispare para o WhatsApp. O bot enviará vagas completas em lotes de 3 a cada 5 minutos até esgotar a fila:
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <select
+                  className="select-filter"
+                  value={dispatchCategory}
+                  onChange={(e) => {
+                    const cat = e.target.value;
+                    setDispatchCategory(cat);
+                    loadPendingCount(cat);
+                  }}
+                  style={{ minWidth: '220px' }}
+                >
+                  <option value="ESTAGIO">Estágio ({dispatchCategory === 'ESTAGIO' ? pendingCategoryCount : '...'} pendentes)</option>
+                  <option value="JUNIOR">Júnior ({dispatchCategory === 'JUNIOR' ? pendingCategoryCount : '...'} pendentes)</option>
+                  <option value="PLENO">Pleno ({dispatchCategory === 'PLENO' ? pendingCategoryCount : '...'} pendentes)</option>
+                  <option value="SENIOR">Sênior ({dispatchCategory === 'SENIOR' ? pendingCategoryCount : '...'} pendentes)</option>
+                  <option value="FREELANCER">Freelancer / PJ ({dispatchCategory === 'FREELANCER' ? pendingCategoryCount : '...'} pendentes)</option>
+                  <option value="TODAS">Todas as Categorias ({dispatchCategory === 'TODAS' ? pendingCategoryCount : '...'} pendentes)</option>
+                </select>
+
+                <button
+                  className="btn-action primary"
+                  onClick={handleDispatchCategory}
+                  disabled={isDispatching || pendingCategoryCount === 0 || !waStatus.targetGroupJid}
+                  style={{ whiteSpace: 'nowrap' }}
+                >
+                  <Send size={14} />
+                  {isDispatching ? 'Enfileirando...' : `Disparar Vagas da Categoria (${pendingCategoryCount})`}
+                </button>
+              </div>
+
+              {dispatchResultMsg && (
+                <div style={{ marginTop: '0.6rem', padding: '0.5rem 0.8rem', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', fontSize: '0.8rem', color: '#6ee7b7' }}>
+                  {dispatchResultMsg}
+                </div>
+              )}
+            </div>
+
+            {/* Categorias Selecionadas para Envio Automático */}
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #334155' }}>
+              <div style={{ marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#f8fafc' }}>
+                  🤖 Categorias do Envio Automático (Scheduler 24/7):
+                </span>
+                <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  Clique para marcar quais categorias serão despachadas automaticamente para o grupo quando o crawler encontrar novas oportunidades:
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                {[
+                  { id: 'ESTAGIO', label: 'Estágio' },
+                  { id: 'JUNIOR', label: 'Júnior' },
+                  { id: 'PLENO', label: 'Pleno' },
+                  { id: 'SENIOR', label: 'Sênior' },
+                  { id: 'FREELANCER', label: 'Freelancer / PJ' },
+                  { id: 'TODAS', label: 'Todas' }
+                ].map((cat) => {
+                  const isActive = (waStatus.targetCategories || ['TODAS']).includes(cat.id);
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      className={`tag-badge ${isActive ? 'active' : ''}`}
+                      onClick={() => handleToggleTargetCategory(cat.id)}
+                      disabled={isSavingCategories}
+                      style={{ cursor: 'pointer', border: '1px solid transparent' }}
+                    >
+                      {cat.label} {isActive ? '✓' : '+'}
+                    </button>
+                  );
+                })}
+                {categorySaveMsg && (
+                  <span style={{ fontSize: '0.75rem', color: '#34d399', marginLeft: '0.5rem' }}>
+                    ✓ {categorySaveMsg}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -721,6 +952,20 @@ export default function App() {
           <option value="FREELAS_99">99Freelas</option>
           <option value="GEEKHUNTER">GeekHunter</option>
         </select>
+
+        <select
+          className="select-filter"
+          value={notifiedFilter}
+          onChange={(e) => setNotifiedFilter(e.target.value as any)}
+          style={{
+            borderColor: notifiedFilter !== 'ALL' ? '#3b82f6' : undefined,
+            color: notifiedFilter === 'PENDING' ? '#fbbf24' : notifiedFilter === 'NOTIFIED' ? '#34d399' : 'white'
+          }}
+        >
+          <option value="ALL">WhatsApp (Todos)</option>
+          <option value="PENDING">⚪ Apenas Pendentes</option>
+          <option value="NOTIFIED">🟢 Apenas Enviadas</option>
+        </select>
       </div>
 
       {/* Grid de Vagas */}
@@ -761,6 +1006,39 @@ export default function App() {
                   <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
                     <MapPin size={11} /> {job.location}
                   </span>
+
+                  {/* Badge de status do WhatsApp */}
+                  {job.notifiedAt ? (
+                    <span
+                      className="badge"
+                      style={{
+                        background: 'rgba(16, 185, 129, 0.15)',
+                        color: '#34d399',
+                        border: '1px solid rgba(16, 185, 129, 0.35)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title={`Enviada ao WhatsApp em ${new Date(job.notifiedAt).toLocaleString('pt-BR')}`}
+                    >
+                      <CheckCircle2 size={11} color="#10b981" /> Enviada
+                    </span>
+                  ) : (
+                    <span
+                      className="badge"
+                      style={{
+                        background: 'rgba(148, 163, 184, 0.1)',
+                        color: '#94a3b8',
+                        border: '1px solid rgba(148, 163, 184, 0.25)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      title="Vaga pendente de envio ao WhatsApp"
+                    >
+                      <Clock size={11} color="#94a3b8" /> Pendente
+                    </span>
+                  )}
                 </div>
 
                 {job.stack && job.stack.length > 0 && (
@@ -772,14 +1050,44 @@ export default function App() {
                 )}
               </div>
 
-              <div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.8rem', alignItems: 'stretch' }}>
+                <button
+                  type="button"
+                  onClick={() => handleToggleJobNotified(job.id, !!job.notifiedAt)}
+                  className="btn-action"
+                  style={{
+                    flex: '0 0 auto',
+                    padding: '0.5rem 0.75rem',
+                    fontSize: '0.78rem',
+                    background: job.notifiedAt ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.12)',
+                    borderColor: job.notifiedAt ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)',
+                    color: job.notifiedAt ? '#fca5a5' : '#6ee7b7',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    cursor: 'pointer'
+                  }}
+                  title={job.notifiedAt ? 'Clique para desmarcar e tornar a vaga pendente' : 'Clique para marcar a vaga como enviada ao WhatsApp'}
+                >
+                  {job.notifiedAt ? (
+                    <>
+                      <X size={13} /> Desmarcar
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={13} /> Marcar Enviada
+                    </>
+                  )}
+                </button>
+
                 <a
                   href={job.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-apply"
+                  style={{ flex: 1 }}
                 >
-                  Ver Vaga e Candidatar-se <ExternalLink size={14} />
+                  Ver Vaga <ExternalLink size={14} />
                 </a>
               </div>
             </div>

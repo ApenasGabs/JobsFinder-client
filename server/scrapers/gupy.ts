@@ -5,7 +5,6 @@ import {
   detectContractType,
   detectSeniority,
   detectWorkModel,
-  extractStack,
 } from "../utils/normalizer.js";
 import { runWithConcurrency } from "../utils/pool.js";
 import { BaseScraper } from "./base.js";
@@ -124,8 +123,8 @@ export class GupyScraper implements BaseScraper {
               );
               const seniorityLevel = detectSeniority(title);
               let jobUrl = item.careerPageUrl || `${portalUrl}/jobs/${item.id}`;
-              if (jobUrl.includes('.gupy.io/job/')) {
-                jobUrl = jobUrl.replace('/job/', '/jobs/');
+              if (jobUrl.includes(".gupy.io/job/")) {
+                jobUrl = jobUrl.replace("/job/", "/jobs/");
               }
 
               const jobData = {

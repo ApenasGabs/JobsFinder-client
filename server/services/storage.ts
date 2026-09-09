@@ -27,8 +27,8 @@ export class StorageService {
         const jobs: Job[] = JSON.parse(content);
         let hasMigrated = false;
         for (const job of jobs) {
-          if (job.url && job.url.includes('.gupy.io/job/')) {
-            job.url = job.url.replace('/job/', '/jobs/');
+          if (job.url && job.url.includes(".gupy.io/job/")) {
+            job.url = job.url.replace("/job/", "/jobs/");
             hasMigrated = true;
           }
           this.jobsMap.set(job.id, job);
@@ -52,7 +52,10 @@ export class StorageService {
     title: string,
     company: string,
   ): string {
-    const normalizedUrl = url && url.includes('.gupy.io/job/') ? url.replace('/job/', '/jobs/') : url;
+    const normalizedUrl =
+      url && url.includes(".gupy.io/job/")
+        ? url.replace("/job/", "/jobs/")
+        : url;
     const raw = `${source.toLowerCase()}:${normalizedUrl.trim() || `${company}:${title}`}`;
     return crypto.createHash("md5").update(raw).digest("hex");
   }
@@ -63,8 +66,8 @@ export class StorageService {
   } {
     this.initialize();
 
-    if (jobData.url && jobData.url.includes('.gupy.io/job/')) {
-      jobData.url = jobData.url.replace('/job/', '/jobs/');
+    if (jobData.url && jobData.url.includes(".gupy.io/job/")) {
+      jobData.url = jobData.url.replace("/job/", "/jobs/");
     }
 
     const id = this.generateJobId(
@@ -118,9 +121,56 @@ export class StorageService {
     }
   }
 
-  public static getUnnotifiedJobs(): Job[] {
+  public static toggleJobNotified(id: string, notified?: boolean): Job | null {
     this.initialize();
-    return Array.from(this.jobsMap.values()).filter((j) => !j.notifiedAt);
+    const job = this.jobsMap.get(id);
+    if (!job) return null;
+
+    if (typeof notified === "boolean") {
+      job.notifiedAt = notified ? (job.notifiedAt || new Date().toISOString()) : null;
+    } else {
+      job.notifiedAt = job.notifiedAt ? null : new Date().toISOString();
+    }
+
+    this.scheduleSave();
+    return job;
+  }
+
+  public static getJobsByCategory(category?: string, unnotifiedOnly = false): Job[] {
+    this.initialize();
+    let jobs = Array.from(this.jobsMap.values());
+
+    if (unnotifiedOnly) {
+      jobs = jobs.filter((j) => !j.notifiedAt);
+    }
+
+    if (category && category !== "TODAS" && category !== "ALL") {
+      const catUpper = category.toUpperCase().trim();
+      jobs = jobs.filter((j) => {
+        // Checa senioridade (ESTAGIO, JUNIOR, PLENO, SENIOR)
+        if (j.seniorityLevel && j.seniorityLevel.toUpperCase() === catUpper) return true;
+        // Checa tipo de contrato (CLT, PJ, FREELANCER, ESTAGIO)
+        if (j.contractType && j.contractType.toUpperCase() === catUpper) return true;
+        // Checa título para palavras-chave (ex: "estágio", "estagio", "internship")
+        if (catUpper === "ESTAGIO" && (
+          j.title.toLowerCase().includes("estág") ||
+          j.title.toLowerCase().includes("estag") ||
+          j.title.toLowerCase().includes("intern")
+        )) return true;
+        if (catUpper === "JUNIOR" && (
+          j.title.toLowerCase().includes("júnior") ||
+          j.title.toLowerCase().includes("junior") ||
+          j.title.toLowerCase().includes("jr")
+        )) return true;
+        return false;
+      });
+    }
+
+    return jobs;
+  }
+
+  public static getUnnotifiedJobs(category?: string): Job[] {
+    return this.getJobsByCategory(category, true);
   }
 
   public static upsertBatch(jobs: Array<Omit<Job, "id">>): {

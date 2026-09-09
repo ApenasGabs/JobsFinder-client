@@ -115,25 +115,42 @@ app.get("/api/jobs", (req: Request, res: Response) => {
   res.json(result);
 });
 
-// 5. Estatísticas agregadas
+// Contagem de vagas pendentes de envio por categoria
+app.get("/api/jobs/pending-count", (req: Request, res: Response) => {
+  const { category } = req.query;
+  const jobs = StorageService.getUnnotifiedJobs(category ? String(category) : undefined);
+  res.json({ count: jobs.length });
+});
+
+// Toggle manual de status de envio da vaga
+app.patch("/api/jobs/:id/notified", (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { notified } = req.body;
+  const job = StorageService.toggleJobNotified(id, typeof notified === "boolean" ? notified : undefined);
+  if (!job) {
+    return res.status(404).json({ error: "Vaga não encontrada" });
+  }
+  res.json({ success: true, job });
+});
+
+// 5. Limpeza de Vagas
+app.delete("/api/jobs", (_req: Request, res: Response) => {
+  StorageService.clear();
+  res.json({ success: true, message: "Banco de dados de vagas limpo" });
+});
+
+// 6. Estatísticas
 app.get("/api/stats", (_req: Request, res: Response) => {
   res.json(StorageService.getStats());
 });
 
-// 6. Limpar banco de vagas
-app.delete("/api/jobs", (_req: Request, res: Response) => {
-  StorageService.clearAll();
-  res.json({ success: true, message: "Todas as vagas foram removidas." });
-});
-
-// 7. STREAMING EM TEMPO REAL VIA SERVER-SENT EVENTS (SSE)
 // 7. ROTAS DO BOT WHATSAPP (BAILEYS)
 app.get("/api/whatsapp/status", (_req: Request, res: Response) => {
   res.json(WhatsAppBot.getStatus());
 });
 
 app.post("/api/whatsapp/config", (req: Request, res: Response) => {
-  const { enabled, targetGroupJid, targetGroupName } = req.body;
+  const { enabled, targetGroupJid, targetGroupName, targetCategories } = req.body;
   const current = ConfigService.getConfig();
 
   const updatedConfig = ConfigService.updateConfig({
@@ -142,11 +159,20 @@ app.post("/api/whatsapp/config", (req: Request, res: Response) => {
       targetGroupJid: targetGroupJid ?? current.whatsapp?.targetGroupJid ?? "",
       targetGroupName:
         targetGroupName ?? current.whatsapp?.targetGroupName ?? "",
-      sendDigestIfMoreThan: current.whatsapp?.sendDigestIfMoreThan ?? 5,
+      targetCategories:
+        targetCategories ?? current.whatsapp?.targetCategories ?? ["TODAS"],
+      batchSize: current.whatsapp?.batchSize ?? 3,
+      batchIntervalMinutes: current.whatsapp?.batchIntervalMinutes ?? 5,
     },
   });
 
   res.json({ success: true, whatsapp: updatedConfig.whatsapp });
+});
+
+app.post("/api/whatsapp/dispatch", async (req: Request, res: Response) => {
+  const { category } = req.body;
+  const result = await WhatsAppBot.dispatchCategoryJobs(category || "TODAS");
+  res.json(result);
 });
 
 app.get("/api/whatsapp/groups", async (req: Request, res: Response) => {
