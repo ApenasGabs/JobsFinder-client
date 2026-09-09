@@ -50,7 +50,6 @@ export class StorageService {
     const job: Job = {
       ...jobData,
       id,
-      scrapedAt: existing ? existing.scrapedAt : new Date().toISOString()
       scrapedAt: existing ? existing.scrapedAt : new Date().toISOString(),
       notifiedAt: existing?.notifiedAt ?? null
     };

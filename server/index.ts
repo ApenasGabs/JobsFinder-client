@@ -18,11 +18,9 @@ const DIST_DIR = path.resolve(__dirname, '../dist');
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
-const HOST = '127.0.0.1'; // Escuta estritamente em localhost por segurança
-const HOST = process.env.HOST || '0.0.0.0'; // Permite mapeamento de portas em containers Docker
+const HOST = process.env.HOST || '0.0.0.0';
 
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'],
   origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
@@ -252,7 +250,6 @@ app.post('/api/scrape', async (req: Request, res: Response) => {
 // Serve o frontend React compilado se existir a pasta dist/
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
-  app.get('*', (req: Request, res: Response, next) => {
   app.use((req: Request, res: Response, next) => {
     if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(DIST_DIR, 'index.html'));

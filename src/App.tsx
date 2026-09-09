@@ -1,7 +1,3 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
 import { useState, useEffect, useRef } from 'react';
 import {
   Search,
@@ -18,7 +14,6 @@ import {
   MapPin,
   Building,
   Radio,
-  X
   X,
   MessageSquare,
   QrCode,
@@ -26,8 +21,6 @@ import {
   Send
 } from 'lucide-react';
 
-function App() {
-  const [count, setCount] = useState(0)
 interface Job {
   id: string;
   title: string;
@@ -126,7 +119,6 @@ export default function App() {
 
     const interval = setInterval(() => {
       loadHealth();
-    }, 10000);
       loadWhatsAppStatus();
     }, 5000);
 
@@ -380,14 +372,6 @@ export default function App() {
   });
 
   return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
     <div>
       {/* Header */}
       <header className="header">
@@ -403,12 +387,10 @@ export default function App() {
             </div>
             <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
               Agregador inteligente de vagas (Gupy 134 empresas, RemoteOK, Programathor, 99Freelas, GeekHunter)
-              Crawler autônomo 24/7 conectado ao WhatsApp para alertas em tempo real
             </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           {health && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#94a3b8', background: '#1e293b', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
@@ -543,15 +525,6 @@ export default function App() {
           </div>
         </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-
       {/* Painel de Controle de Varredura */}
       <div className="panel">
         <div className="panel-title">
@@ -623,14 +596,9 @@ export default function App() {
                 </div>
               ))}
             </div>
-          </div>
         </div>
       </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </div>
 
       {/* Monitor de Execução Streaming SSE */}
       {isScraping && (
@@ -837,5 +805,3 @@ export default function App() {
     </div>
   );
 }
-
-export default App

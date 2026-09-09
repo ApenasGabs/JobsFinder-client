@@ -5,11 +5,8 @@ import { runWithConcurrency } from '../utils/pool.js';
 import { detectSeniority, detectWorkModel, detectContractType, extractStack } from '../utils/normalizer.js';
 import { StorageService } from '../services/storage.js';
 
-interface GupyJobResponseItem {
-  id?: number | string;
 interface GupyRawJob {
   id: number | string;
-  title?: string;
   name?: string;
   title?: string;
   type?: string;
@@ -17,7 +14,6 @@ interface GupyRawJob {
   careerPageUrl?: string;
   jobUrl?: string;
   workplaceType?: string;
-  type?: string;
   city?: string;
   state?: string;
   country?: string;
@@ -47,38 +43,18 @@ export class GupyScraper implements BaseScraper {
   ): Promise<Job[]> {
     const config = ConfigService.getConfig();
     const companies = config.gupyCompanies.filter((c) => c.enabled !== false);
-    const keywords = options.keywords && options.keywords.length > 0 ? options.keywords : [''];
     const keywords = (options.keywords || []).map((k) => k.toLowerCase().trim()).filter(Boolean);
 
     const foundJobs: Job[] = [];
     let completedCount = 0;
-
-    const concurrency = options.concurrency || 8; // 8 conexões HTTP simultâneas
     const concurrency = options.concurrency || 10; // 10 conexões assíncronas paralelas
 
-    await runWithConcurrency(companies, concurrency, async (company, index) => {
-      for (const query of keywords) {
-        try {
-          const searchParam = query ? `&jobName=${encodeURIComponent(query)}` : '';
-          const apiUrl = `https://${company.slug}.gupy.io/api/v1/jobs?limit=50&offset=0${searchParam}`;
     await runWithConcurrency(companies, concurrency, async (company) => {
       try {
         const portalUrl = company.link ? company.link.replace(/\/$/, '') : `https://${company.slug}.gupy.io`;
-
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 6000);
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 6000);
 
-          const response = await fetch(apiUrl, {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-              'Accept': 'application/json, text/plain, */*',
-              'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
-            },
-            signal: controller.signal
-          });
-          clearTimeout(timeout);
         const response = await fetch(portalUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -89,23 +65,10 @@ export class GupyScraper implements BaseScraper {
         });
         clearTimeout(timeout);
 
-          if (response.ok) {
-            const data = await response.json();
-            const rawList: GupyJobResponseItem[] = Array.isArray(data) ? data : data.data || [];
         if (response.ok) {
           const html = await response.text();
           const nextDataMatch = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
 
-            for (const item of rawList) {
-              const title = item.name || item.title || 'Vaga sem título';
-              const jobUrl = item.careerPageUrl || item.jobUrl || `${company.link}/job/${item.id}`;
-              
-              let model: WorkModel = 'NAO_INFORMADO';
-              if (item.workplaceType) {
-                const wp = item.workplaceType.toLowerCase();
-                if (wp.includes('remote') || wp.includes('remoto')) model = 'REMOTO';
-                else if (wp.includes('hybrid') || wp.includes('hibrid') || wp.includes('híbrido')) model = 'HIBRIDO';
-                else if (wp.includes('on-site') || wp.includes('onsite') || wp.includes('presencial')) model = 'PRESENCIAL';
           if (nextDataMatch) {
             const nextData = JSON.parse(nextDataMatch[1]);
             const jobsList: GupyRawJob[] = nextData.props?.pageProps?.jobs || [];
@@ -119,11 +82,7 @@ export class GupyScraper implements BaseScraper {
                 const matches = keywords.some((k) => textToMatch.includes(k));
                 if (!matches) continue;
               }
-              if (model === 'NAO_INFORMADO') {
-                model = detectWorkModel(title);
-              }
 
-              const locationParts = [item.city, item.state, item.country || 'Brasil'].filter(Boolean);
               let model: WorkModel = 'NAO_INFORMADO';
               const wpType = item.workplace?.workplaceType?.toLowerCase();
               if (wpType === 'remote') model = 'REMOTO';
@@ -137,7 +96,6 @@ export class GupyScraper implements BaseScraper {
 
               const contractType = detectContractType(item.type || title, 'CLT');
               const seniorityLevel = detectSeniority(title);
-              const stack = extractStack(`${title} ${item.description || ''}`);
               const stack = extractStack(`${title} ${item.department || ''}`);
               const jobUrl = item.careerPageUrl || `${portalUrl}/job/${item.id}`;
 
@@ -151,7 +109,6 @@ export class GupyScraper implements BaseScraper {
                 url: jobUrl,
                 source: 'GUPY',
                 stack,
-                description: item.description || ''
                 description: `Departamento: ${item.department || 'Geral'} | Tipo: ${item.type || 'Efetivo'}`
               };
 
@@ -160,8 +117,6 @@ export class GupyScraper implements BaseScraper {
               onJobFound(job);
             }
           }
-        } catch (err) {
-          // Ignora silenciosamente empresas individuais que podem falhar ou dar timeout
         }
       } catch {
         // Ignora silenciosamente empresas individuais que podem falhar ou dar timeout
@@ -181,4 +136,3 @@ export class GupyScraper implements BaseScraper {
     return foundJobs;
   }
 }
-

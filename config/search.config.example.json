@@ -143,7 +143,6 @@
     { "name": "Teckey Solutions", "link": "https://teckeysolutions.gupy.io", "slug": "teckeysolutions", "enabled": true },
     { "name": "Quero Ser Dev", "link": "https://qsd.gupy.io", "slug": "qsd", "enabled": true },
     { "name": "Elo7", "link": "https://elo7.gupy.io", "slug": "elo7", "enabled": true }
-  ]
   ],
   "whatsapp": {
     "enabled": false,
