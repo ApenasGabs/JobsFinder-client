@@ -51,6 +51,8 @@ export class StorageService {
       ...jobData,
       id,
       scrapedAt: existing ? existing.scrapedAt : new Date().toISOString()
+      scrapedAt: existing ? existing.scrapedAt : new Date().toISOString(),
+      notifiedAt: existing?.notifiedAt ?? null
     };
 
     const isNew = !existing;
@@ -60,6 +62,36 @@ export class StorageService {
     this.scheduleSave();
 
     return { job, isNew };
+  }
+
+  public static markAsNotified(jobId: string): void {
+    this.initialize();
+    const job = this.jobsMap.get(jobId);
+    if (job) {
+      job.notifiedAt = new Date().toISOString();
+      this.scheduleSave();
+    }
+  }
+
+  public static markAllExistingAsNotified(): void {
+    this.initialize();
+    let changed = false;
+    const now = new Date().toISOString();
+    for (const job of this.jobsMap.values()) {
+      if (!job.notifiedAt) {
+        job.notifiedAt = now;
+        changed = true;
+      }
+    }
+    if (changed) {
+      this.scheduleSave(0);
+      console.log('[Storage] Cold Start: Todas as vagas pré-existentes foram marcadas como notificadas.');
+    }
+  }
+
+  public static getUnnotifiedJobs(): Job[] {
+    this.initialize();
+    return Array.from(this.jobsMap.values()).filter((j) => !j.notifiedAt);
   }
 
   public static upsertBatch(jobs: Array<Omit<Job, 'id'>>): { totalSaved: number; totalUpdated: number } {

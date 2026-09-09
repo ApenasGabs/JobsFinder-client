@@ -18,6 +18,7 @@ export interface Job {
   stack: string[];
   scrapedAt: string;
   description?: string;
+  notifiedAt?: string | null; // Data/hora em que a vaga foi enviada ao WhatsApp
 }
 
 export interface ScrapeOptions {
@@ -39,6 +40,19 @@ export interface ScrapeProgressEvent {
   progressPercent?: number;
 }
 
+export interface WhatsAppConfig {
+  enabled: boolean;
+  targetGroupJid: string; // Ex: '120363xxxxxx@g.us'
+  targetGroupName?: string;
+  sendDigestIfMoreThan: number; // Ex: se > 5 vagas de uma vez, envia em resumo
+}
+
+export interface SchedulerConfig {
+  enabled: boolean;
+  cronSchedule: string; // Ex: '*/30 * * * *' (a cada 30 minutos)
+  lastRunAt?: string;
+}
+
 export interface AppConfig {
   searchTerms: string[];
   seniorityLevels: string[];
@@ -56,5 +70,7 @@ export interface AppConfig {
     slug: string;
     enabled: boolean;
   }>;
+  whatsapp?: WhatsAppConfig;
+  scheduler?: SchedulerConfig;
 }
 

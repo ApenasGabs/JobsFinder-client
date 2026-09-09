@@ -40,13 +40,16 @@ body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: var(--bg-primary);
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--border-color);
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
@@ -323,11 +326,30 @@ body {
   letter-spacing: 0.5px;
 }
 
-.source-badge.gupy { background: #0284c7; color: white; }
-.source-badge.remoteok { background: #b45309; color: white; }
-.source-badge.programathor { background: #15803d; color: white; }
-.source-badge.freelas_99 { background: #7c3aed; color: white; }
-.source-badge.geekhunter { background: #be123c; color: white; }
+.source-badge.gupy {
+  background: #0284c7;
+  color: white;
+}
+
+.source-badge.remoteok {
+  background: #b45309;
+  color: white;
+}
+
+.source-badge.programathor {
+  background: #15803d;
+  color: white;
+}
+
+.source-badge.freelas_99 {
+  background: #7c3aed;
+  color: white;
+}
+
+.source-badge.geekhunter {
+  background: #be123c;
+  color: white;
+}
 
 .job-company {
   font-size: 0.88rem;
@@ -350,11 +372,34 @@ body {
   font-weight: 600;
 }
 
-.badge.remote { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
-.badge.hybrid { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
-.badge.onsite { background: rgba(148, 163, 184, 0.15); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
-.badge.seniority { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
-.badge.clt { background: rgba(139, 92, 246, 0.15); color: #c084fc; }
+.badge.remote {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badge.hybrid {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.badge.onsite {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.badge.seniority {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge.clt {
+  background: rgba(139, 92, 246, 0.15);
+  color: #c084fc;
+}
 
 .job-stack {
   display: flex;

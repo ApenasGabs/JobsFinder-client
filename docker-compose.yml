@@ -1,0 +1,37 @@
+services:
+  # Aplicação Central (Crawler Engine + Scheduler 24/7 + Bot WhatsApp + Dashboard Web)
+  s-job-crawler:
+    build: .
+    container_name: s-job-crawler
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/data                   # Banco de dados de vagas (jobs.json)
+      - ./config:/app/config               # Configuração centralizada de termos/empresas
+      - ./auth_baileys:/app/auth_baileys   # Sessão do WhatsApp persistente (escaneie o QR só 1 vez)
+    environment:
+      - PORT=3001
+      - HOST=0.0.0.0
+      - CRON_SCHEDULE=*/30 * * * *        # Varredura a cada 30 minutos (ajuste conforme preferir)
+      # Conexão com o Navegador Headless:
+      # CASO 1 (Padrão): Rodando tudo junto no ZimaOS via container local
+      - LIGHTPANDA_HTTP=http://lightpanda:9222
+      - LIGHTPANDA_WS=ws://lightpanda:9222
+      # CASO 2: Se no futuro quiser rodar o navegador na máquina Ubuntu Server externa, basta trocar para:
+      # - LIGHTPANDA_HTTP=http://192.168.1.X:9222
+      # - LIGHTPANDA_WS=ws://192.168.1.X:9222
+      # e remover ou comentar o serviço 'lightpanda' abaixo.
+    depends_on:
+      - lightpanda
+
+  # Navegador Headless Ultraleve Lightpanda (~30MB RAM)
+  # (Se for migrar para o Ubuntu Server mais potente, pode desativar este bloco no ZimaOS)
+  lightpanda:
+    image: lightpanda/browser:nightly
+    container_name: s-job-crawler-browser
+    restart: unless-stopped
+    command: ["serve", "--host", "0.0.0.0", "--port", "9222"]
+    ports:
+      - "9222:9222"
+

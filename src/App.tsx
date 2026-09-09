@@ -19,6 +19,11 @@ import {
   Building,
   Radio,
   X
+  X,
+  MessageSquare,
+  QrCode,
+  Clock,
+  Send
 } from 'lucide-react';
 
 function App() {
@@ -37,6 +42,7 @@ interface Job {
   stack: string[];
   scrapedAt: string;
   description?: string;
+  notifiedAt?: string | null;
 }
 
 interface AppConfig {
@@ -45,6 +51,26 @@ interface AppConfig {
   contractTypes: string[];
   sources: Array<{ id: string; name: string; type: string; enabled: boolean }>;
   gupyCompanies: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
+  whatsapp?: {
+    enabled: boolean;
+    targetGroupJid: string;
+    targetGroupName?: string;
+    sendDigestIfMoreThan: number;
+  };
+  scheduler?: {
+    enabled: boolean;
+    cronSchedule: string;
+    lastRunAt?: string;
+  };
+}
+
+interface WhatsAppStatus {
+  status: 'disconnected' | 'connecting' | 'connected';
+  botNumber: string | null;
+  qrCode: string | null;
+  enabled: boolean;
+  targetGroupJid: string;
+  targetGroupName?: string;
 }
 
 export default function App() {
@@ -53,6 +79,19 @@ export default function App() {
   const [stats, setStats] = useState<any>({});
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [health, setHealth] = useState<any>(null);
+
+  // WhatsApp & Scheduler state
+  const [waStatus, setWaStatus] = useState<WhatsAppStatus>({
+    status: 'disconnected',
+    botNumber: null,
+    qrCode: null,
+    enabled: false,
+    targetGroupJid: ''
+  });
+  const [groups, setGroups] = useState<Array<{ id: string; subject: string; participants: number }>>([]);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [testResultMsg, setTestResultMsg] = useState<string | null>(null);
 
   // Filtros de busca local
   const [searchFilter, setSearchFilter] = useState('');
@@ -83,10 +122,13 @@ export default function App() {
     loadConfig();
     loadJobs();
     loadStats();
+    loadWhatsAppStatus();
 
     const interval = setInterval(() => {
       loadHealth();
     }, 10000);
+      loadWhatsAppStatus();
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
@@ -97,6 +139,7 @@ export default function App() {
       if (res.ok) setHealth(await res.json());
     } catch {
       // Servidor offline ou iniciando
+      // Servidor iniciando
     }
   };
 
@@ -134,6 +177,65 @@ export default function App() {
       if (res.ok) setStats(await res.json());
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err);
+    }
+  };
+
+  const loadWhatsAppStatus = async () => {
+    try {
+      const res = await fetch('/api/whatsapp/status');
+      if (res.ok) {
+        const data: WhatsAppStatus = await res.json();
+        setWaStatus(data);
+        if (data.status === 'connected') {
+          loadWhatsAppGroups();
+        }
+      }
+    } catch {
+      // Ignora silenciosamente
+    }
+  };
+
+  const loadWhatsAppGroups = async () => {
+    try {
+      const res = await fetch('/api/whatsapp/groups');
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data.groups || []);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar grupos WhatsApp:', err);
+    }
+  };
+
+  const handleSelectGroup = async (groupJid: string, groupName: string) => {
+    try {
+      await fetch('/api/whatsapp/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          enabled: true,
+          targetGroupJid: groupJid,
+          targetGroupName: groupName
+        })
+      });
+      loadWhatsAppStatus();
+      loadConfig();
+    } catch (err) {
+      console.error('Erro ao salvar grupo WhatsApp:', err);
+    }
+  };
+
+  const handleTestWhatsApp = async () => {
+    setTestSending(true);
+    setTestResultMsg(null);
+    try {
+      const res = await fetch('/api/whatsapp/test', { method: 'POST' });
+      const data = await res.json();
+      setTestResultMsg(data.message || (data.success ? 'Mensagem enviada com sucesso!' : 'Falha ao enviar'));
+    } catch (err: any) {
+      setTestResultMsg(`Erro: ${err?.message || 'Falha de conexão'}`);
+    } finally {
+      setTestSending(false);
     }
   };
 
@@ -297,19 +399,38 @@ export default function App() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <h1 className="brand-title">S-Job-Crawler</h1>
               <span className="brand-badge">HIGH-PERFORMANCE</span>
+              <span className="brand-badge">ZIMAOS DOCKER EDITION</span>
             </div>
             <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
               Agregador inteligente de vagas (Gupy 134 empresas, RemoteOK, Programathor, 99Freelas, GeekHunter)
+              Crawler autônomo 24/7 conectado ao WhatsApp para alertas em tempo real
             </p>
           </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           {health && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#94a3b8', background: '#1e293b', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
               <Cpu size={14} color="#10b981" />
               <span>RAM: {health.memoryUsageMB?.rss || 0} MB</span>
             </div>
+          )}
+
+          {/* Badge WhatsApp */}
+          {waStatus.status === 'connected' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#34d399', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+              <MessageSquare size={14} color="#10b981" />
+              <span>Bot WhatsApp Ativo (+{waStatus.botNumber})</span>
+            </div>
+          ) : (
+            <button
+              className="btn-action"
+              onClick={() => setShowQrModal(true)}
+              style={{ background: '#065f46', borderColor: '#10b981', color: 'white' }}
+            >
+              <QrCode size={16} /> Conectar WhatsApp
+            </button>
           )}
 
           <button className="btn-action" onClick={() => setShowConfigModal(true)}>
@@ -321,6 +442,71 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Card do Bot do WhatsApp & Grupo Alvo */}
+      <div className="panel" style={{ background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)', border: '1px solid #334155' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+            <div style={{ background: '#10b981', color: 'white', padding: '0.6rem', borderRadius: '10px' }}>
+              <MessageSquare size={22} />
+            </div>
+            <div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Notificações Automáticas no WhatsApp</h3>
+              <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+                {waStatus.status === 'connected'
+                  ? `Conectado via Baileys. O bot monitora vagas novas e despacha para o grupo selecionado.`
+                  : `Bot offline. Clique em "Conectar WhatsApp" para ler o QR Code pelo seu celular.`}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+            {waStatus.status === 'connected' && (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                  <label style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Grupo de Destino:</label>
+                  <select
+                    className="select-filter"
+                    value={waStatus.targetGroupJid || ''}
+                    onChange={(e) => {
+                      const selected = groups.find((g) => g.id === e.target.value);
+                      handleSelectGroup(e.target.value, selected?.subject || '');
+                    }}
+                    style={{ minWidth: '220px' }}
+                  >
+                    <option value="">Selecione um grupo...</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.subject} ({g.participants} membros)
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  className="btn-action"
+                  onClick={handleTestWhatsApp}
+                  disabled={testSending || !waStatus.targetGroupJid}
+                  style={{ marginTop: '1rem' }}
+                >
+                  <Send size={14} /> {testSending ? 'Enviando...' : 'Testar Envio'}
+                </button>
+              </>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', color: '#94a3b8', background: '#020617', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid #1e293b', marginTop: waStatus.status === 'connected' ? '1rem' : 0 }}>
+              <Clock size={14} color="#38bdf8" />
+              <span>Scheduler: A cada 30 min</span>
+            </div>
+          </div>
+        </div>
+
+        {testResultMsg && (
+          <div style={{ marginTop: '0.8rem', padding: '0.5rem 0.8rem', borderRadius: '6px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid #3b82f6', fontSize: '0.8rem', color: '#93c5fd' }}>
+            {testResultMsg}
+          </div>
+        )}
+      </div>
 
       {/* Estatísticas Rápidas */}
       <div className="stats-grid">
@@ -567,6 +753,53 @@ export default function App() {
       )}
 
       {/* Modal de Configuração */}
+      {/* Modal Conectar WhatsApp com QR Code */}
+      {showQrModal && (
+        <div className="modal-overlay" onClick={() => setShowQrModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>📲 Conectar WhatsApp</h2>
+              <button onClick={() => setShowQrModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {waStatus.status === 'connected' ? (
+              <div style={{ padding: '2rem 1rem' }}>
+                <CheckCircle2 size={48} color="#10b981" style={{ margin: '0 auto 1rem' }} />
+                <h3 style={{ color: '#34d399', marginBottom: '0.5rem' }}>WhatsApp Conectado!</h3>
+                <p style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+                  O bot está ativo no número <strong>+{waStatus.botNumber}</strong>.
+                </p>
+                <button className="btn-action primary" onClick={() => setShowQrModal(false)} style={{ marginTop: '1.5rem', width: '100%' }}>
+                  Concluir
+                </button>
+              </div>
+            ) : waStatus.qrCode ? (
+              <div>
+                <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '1rem' }}>
+                  Abra o WhatsApp no celular &gt; <strong>Aparelhos conectados</strong> &gt; <strong>Conectar aparelho</strong> e aponte a câmera:
+                </p>
+                <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', display: 'inline-block', marginBottom: '1rem' }}>
+                  <img src={waStatus.qrCode} alt="WhatsApp QR Code" style={{ width: '240px', height: '240px', display: 'block' }} />
+                </div>
+                <p style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                  O código expira em 40 segundos e atualiza automaticamente.
+                </p>
+              </div>
+            ) : (
+              <div style={{ padding: '2rem 1rem' }}>
+                <RefreshCw size={32} className="animate-spin" color="#3b82f6" style={{ margin: '0 auto 1rem' }} />
+                <p style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+                  Gerando QR Code de conexão... aguarde um instante.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Configuração Geral */}
       {showConfigModal && config && (
         <div className="modal-overlay" onClick={() => setShowConfigModal(false)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>

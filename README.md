@@ -1,89 +1,124 @@
-# React + TypeScript + Vite
 # 🚀 S-Job-Crawler
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-Agregador e Web Crawler de vagas de alta performance, unificando a cobertura de **134 empresas da Gupy**, múltiplas plataformas **CLT e Freelancer** (RemoteOK, Programathor, 99Freelas, GeekHunter) e suporte ao navegador ultraleve **Lightpanda Browser**.
+Agregador e Web Crawler de vagas de alta performance, unificando a cobertura de **134 empresas da Gupy**, plataformas **CLT e Freelancer** (RemoteOK, Programathor, 99Freelas, GeekHunter), agendador 24/7 autônomo e **robô do WhatsApp via Baileys com envio para grupo específico**.
 
-Currently, two official plugins are available:
-Projetado especificamente para rodar com **baixo consumo de recursos (CPU e RAM)**, ideal para servidores locais, PCs antigos ou VPS de baixo custo.
+Projetado especificamente para rodar com **baixo consumo de recursos (CPU e RAM)**, ideal para servidores locais, PCs antigos rodando **ZimaOS** ou qualquer distribuição Linux via Docker.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 ---
 
-## Expanding the ESLint configuration
-## ⚡ Diferenciais de Performance
+## ⚡ Diferenciais de Performance e Arquitetura
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-- **Zero Sobrecarga de Navegador:** Para ~80% das fontes (incluindo as 134 empresas da Gupy e RemoteOK), o crawler consulta diretamente endpoints públicos de API via HTTP assíncrono com pool de concorrência. Varre 134 empresas em menos de 5 segundos.
-- **Consumo de Memória:** O servidor e todo o banco em memória ocupam **menos de 50 MB de RAM**.
+- **Zero Sobrecarga de Navegador:** Para ~80% das fontes (incluindo as 134 empresas da Gupy e RemoteOK), o crawler consulta diretamente endpoints públicos e dados de hidratação SSR (`__NEXT_DATA__`) via HTTP assíncrono com pool de concorrência. Varre 110+ empresas em ~9 segundos.
+- **Consumo de Memória Ultrabaixo:** O servidor backend e o banco em memória ocupam **menos de 50 MB de RAM**. O navegador Lightpanda consome apenas ~30 MB de RAM.
+- **Deduplicação Rigorosa e Cold-Start:**
+  - **Identificador Canônico Imutável:** Vagas recebem hash MD5 determinístico baseado na fonte e ID de origem (`gupy:banco-inter:123456`).
+  - **Detecção de Novidades:** Apenas vagas nunca antes vistas recebem `isNew: true`.
+  - **Cold-Start Anti-Spam:** Ao ligar o sistema pela primeira vez ou recarregar um banco existente, todas as vagas já salvas são marcadas com `notifiedAt`, garantindo que o bot do WhatsApp **nunca dispare centenas de vagas antigas** ao iniciar.
+- **Bot WhatsApp (Baileys) Direcionado para Grupos:**
+  - Pareamento fácil via QR Code na interface web.
+  - Seleção de grupo de destino através de menu dropdown com listagem dinâmica de grupos.
+  - Fila inteligente com delay de 3 segundos entre envios para evitar ban/bloqueio pelo WhatsApp.
+  - Resumo em lote caso surjam mais de 5 vagas simultaneamente.
 - **Streaming em Tempo Real (SSE):** As vagas aparecem na tela no mesmo instante em que são coletadas, sem esperas bloqueantes.
-- **Armazenamento Otimizado:** Persistência em JSON com gravações em disco assíncronas com debounce (evitando travar o disco rígido em PCs antigos).
-- **Configuração Centralizada:** Todas as stacks buscadas, palavras-chave e empresas ativas ficam em `config/search.config.json` e podem ser alteradas tanto pelo arquivo quanto pela interface web.
-- **Lightpanda Headless Engine:** Integração pronta para páginas dinâmicas que exigem execução de JavaScript via protocolo CDP (`ws://127.0.0.1:9222`).
+- **Persistência Assíncrona com Debounce:** Gravações no disco rígido do PC antigo são enfileiradas e agrupadas, poupando I/O.
 
-- Configure the top-level `parserOptions` property like this:
 ---
 
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-## 🛠️ Como Iniciar
+## ⚡ Deploy Automático com 1 Comando (ZimaOS / Linux)
 
-### 1. Pré-requisitos
-Node.js 18+ (testado e validado no Node 24).
-
-### 2. Iniciar a Aplicação Completa (Backend + Interface Web)
+Se você estiver no terminal SSH do ZimaOS (ou qualquer servidor Linux), você pode rodar **um único comando** que baixa automaticamente o repositório se ele não existir, atualiza se já existir, configura os diretórios e sobe tudo no Docker:
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/ApenasGabs/JobsFinder-client/main/deploy.sh | bash
+```
+
+> **Nota:** Se você renomear ou trocar a URL do repositório no futuro, basta passar a variável `REPO_URL`:
+> ```bash
+> REPO_URL="https://github.com/SEU_USUARIO/NOVO_REPO.git" bash -c "$(curl -fsSL https://raw.githubusercontent.com/.../deploy.sh)"
+> ```
+---
+
+## 🖥️ Instalação Direta no ZimaOS via Interface Web (Add Custom App)
+
+Se você não quer usar terminal/SSH e quer apenas colar um YAML no ZimaOS:
+
+1. No seu **ZimaOS**, abra a **App Store** (ou clique no botão **`+`** na tela inicial).
+2. Clique no canto superior em **"Custom Install"** (ou **"Import"**).
+3. Cole o conteúdo do arquivo [docker-compose.zimaos.yml](file:///home/gabs/projetos/busca-vagas/S-Job-Crawler/docker-compose.zimaos.yml) (disponível abaixo).
+4. Clique em **"Install"** / **"Submit"**.
+5. **O container baixará automaticamente o repositório**, preparará o ambiente e criará o ícone do **S-Job-Crawler** direto na tela inicial do seu ZimaOS!
+
+---
+
+## 🐳 Executando Manualmente no ZimaOS (Docker Compose)
+
+### 1. Iniciar Tudo no ZimaOS (Aplicação + Lightpanda local)
+
+Caso prefira clonar manualmente:
+
+```bash
+git clone https://github.com/ApenasGabs/JobsFinder-client.git S-Job-Crawler
 cd S-Job-Crawler
-yarn start
-# ou: npx tsx server/index.ts
+docker compose up -d --build
 ```
 
 Acesse no seu navegador:
-👉 **`http://127.0.0.1:3001`**
+👉 **`http://<IP_DO_ZIMAOS>:3001`**
 
-### 3. Modo Desenvolvimento com Hot-Reload
-Caso queira editar a interface React com HMR:
+### 2. Volumes Persistentes no Docker
+- `./data` ➔ Armazena `jobs.json` (banco de vagas salvas e status de notificação).
+- `./config` ➔ Armazena `search.config.json` (termos de busca, empresas ativas, ID do grupo do WhatsApp).
+- `./auth_baileys` ➔ Armazena as chaves de sessão do WhatsApp. **Você só precisa escanear o QR Code uma vez**; ao reiniciar o container, a conexão é restaurada automaticamente.
 
+---
+
+## 📲 Configuração do Bot do WhatsApp (Grupo Específico)
+
+1. Acesse o painel web em `http://<IP_DO_ZIMAOS>:3001`.
+2. No card do **Bot WhatsApp**, clique em **"Conectar WhatsApp"**.
+3. Um modal abrirá exibindo o **QR Code**. Abra o WhatsApp no seu celular, vá em **Aparelhos Conectados** > **Conectar um aparelho** e escaneie o código.
+4. Assim que conectar, o status mudará para **Conectado**.
+5. No campo **Grupo de Destino**, selecione o grupo desejado da lista (os grupos em que seu número participa são detectados automaticamente).
+6. Clique em **"Testar Envio"** para confirmar que o bot tem permissão de enviar mensagens no grupo selecionado.
+7. Pronto! A cada ciclo do agendador (padrão a cada 30 minutos), todas as **vagas novas** serão enviadas formatadas diretamente no grupo.
+
+---
+
+## 🖥️ Arquitetura Flexível: Movendo o Navegador para Outra Máquina (Ubuntu Server)
+
+Caso você queira rodar o crawler no ZimaOS e transferir a carga do navegador headless para uma máquina mais potente com **Ubuntu Server**, o sistema já vem preparado:
+
+### No Ubuntu Server (Máquina potente):
+Rode apenas o container do Lightpanda:
 ```bash
-# Terminal 1: Backend API
-yarn server
-
-# Terminal 2: Frontend Vite
-yarn dev
+docker run -d \
+  --name lightpanda \
+  --restart unless-stopped \
+  -p 9222:9222 \
+  lightpanda/browser:nightly \
+  serve --host 0.0.0.0 --port 9222
 ```
+
+### No ZimaOS (`docker-compose.yml`):
+1. Comente ou remova o bloco do serviço `lightpanda`.
+2. Altere as variáveis de ambiente do `s-job-crawler`:
+```yaml
+environment:
+  - LIGHTPANDA_HTTP=http://<IP_DO_UBUNTU_SERVER>:9222
+  - LIGHTPANDA_WS=ws://<IP_DO_UBUNTU_SERVER>:9222
+```
+3. Reinicie com `docker compose up -d`. O crawler se comunicará via rede com o navegador na outra máquina sem nenhuma alteração no código.
 
 ---
 
 ## ⚙️ Configuração Centralizada de Stacks e Buscas
 
-Você pode configurar quais tecnologias e empresas deseja monitorar de duas formas:
-
-1. **Pela Interface Web:** Clique no botão **Configurações** no topo da tela ou adicione novos termos diretamente pelas tags.
-2. **Pelo Arquivo:** Edite o arquivo `config/search.config.json`:
+Você pode gerenciar as palavras-chave e empresas ativas tanto pela interface web (botão **Configurações**) quanto pelo arquivo `config/search.config.json`:
 
 ```json
 {
   "searchTerms": [
-    "java",
-    "react",
-    "node",
-    "typescript",
-    "fullstack",
-    "frontend",
-    "backend",
-    "python",
-    "devops",
-    "estagio",
-    "junior"
+    "java", "react", "node", "typescript", "fullstack", "frontend", "backend", "python", "devops", "estagio", "junior"
   ],
   "sources": [
     { "id": "GUPY", "name": "Gupy (134 Empresas)", "enabled": true },
@@ -91,13 +126,19 @@ Você pode configurar quais tecnologias e empresas deseja monitorar de duas form
     { "id": "PROGRAMATHOR", "name": "Programathor", "enabled": true },
     { "id": "FREELAS_99", "name": "99Freelas", "enabled": true },
     { "id": "GEEKHUNTER", "name": "GeekHunter", "enabled": true }
-  ]
+  ],
+  "whatsapp": {
+    "enabled": true,
+    "targetGroupId": "1203630XXXXXXXXX@g.us",
+    "targetGroupName": "Vagas Tech TI"
+  },
+  "scheduler": {
+    "enabled": true,
+    "cronExpression": "*/30 * * * *"
+  }
 }
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
 ---
 
 ## 📡 Endpoints da API
@@ -105,9 +146,14 @@ Você pode configurar quais tecnologias e empresas deseja monitorar de duas form
 | Método | Endpoint | Descrição |
 | :--- | :--- | :--- |
 | `GET` | `/api/health` | Status da aplicação e consumo real de memória em MB |
-| `GET` | `/api/config` | Retorna a configuração de busca e empresas ativas |
-| `PUT` | `/api/config` | Atualiza termos, senioridades ou empresas |
+| `GET` | `/api/config` | Retorna a configuração de busca, empresas e WhatsApp |
+| `PUT` | `/api/config` | Atualiza termos, empresas ativas ou grupo do WhatsApp |
 | `GET` | `/api/jobs` | Consulta vagas salvas com paginação e filtros |
-| `GET` | `/api/stats` | Estatísticas por fonte, modelo (Remoto/Presencial/Híbrido) |
+| `GET` | `/api/stats` | Estatísticas agregadas por fonte e modalidade |
 | `GET` | `/api/scrape/stream` | **Server-Sent Events (SSE)** disparando a varredura em tempo real |
+| `GET` | `/api/whatsapp/status` | Status da conexão Baileys e QR Code atual |
+| `GET` | `/api/whatsapp/groups` | Lista grupos participantes do WhatsApp |
+| `POST` | `/api/whatsapp/config` | Salva grupo alvo selecionado |
+| `POST` | `/api/whatsapp/test` | Envia mensagem de teste para o grupo |
+| `POST` | `/api/scheduler/trigger` | Força execução imediata do ciclo de busca e notificação |
 | `DELETE` | `/api/jobs` | Limpa o banco de vagas local |

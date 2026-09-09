@@ -1,0 +1,79 @@
+name: s-job-crawler
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: s-job-crawler
+  description:
+    en_us: "High-performance job crawler for 134+ companies with Baileys WhatsApp bot."
+    pt_br: "Agregador e crawler de vagas com robô de WhatsApp para grupos e baixo consumo."
+  tag: Utilities
+  developer: Gabs
+  author: Gabs
+  icon: https://raw.githubusercontent.com/ApenasGabs/JobsFinder-client/main/public/vite.svg
+  title:
+    en_us: S-Job-Crawler
+    pt_br: S-Job-Crawler
+  scheme: http
+  index: /
+  port_map: "3001"
+
+services:
+  # Aplicação Central (Auto-download do repo + Engine + Scheduler + WhatsApp Bot + Painel Web)
+  s-job-crawler:
+    image: node:22-alpine
+    container_name: s-job-crawler
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - /DATA/AppData/s-job-crawler:/app
+    environment:
+      - REPO_URL=https://github.com/ApenasGabs/JobsFinder-client.git
+      - BRANCH=main
+      - PORT=3001
+      - HOST=0.0.0.0
+      - CRON_SCHEDULE=*/30 * * * *
+      - LIGHTPANDA_HTTP=http://lightpanda:9222
+      - LIGHTPANDA_WS=ws://lightpanda:9222
+    command: >
+      sh -c "
+        apk add --no-cache git &&
+        cd /app &&
+        if [ ! -d '/app/.git' ]; then
+          echo '📥 Repositório não encontrado em /app. Clonando automaticamente...' &&
+          git clone --depth 1 -b $$BRANCH $$REPO_URL /tmp/repo &&
+          cp -a /tmp/repo/. /app/ &&
+          rm -rf /tmp/repo &&
+          echo '✅ Repositório baixado!';
+        else
+          echo '🔄 Repositório existente. Sincronizando...' &&
+          git pull origin $$BRANCH || true;
+        fi &&
+        mkdir -p /app/data /app/config /app/auth_baileys &&
+        if [ ! -f /app/config/search.config.json ] && [ -f /app/config/search.config.example.json ]; then
+          cp /app/config/search.config.example.json /app/config/search.config.json;
+        fi &&
+        if [ ! -d /app/node_modules ]; then
+          echo '📦 Instalando dependências (apenas na 1ª inicialização)...' &&
+          yarn install --frozen-lockfile || yarn install;
+        fi &&
+        if [ ! -d /app/dist ]; then
+          echo '🏗️ Compilando frontend Web...' &&
+          yarn build;
+        fi &&
+        echo '🚀 Iniciando S-Job-Crawler...' &&
+        npx tsx server/index.ts
+      "
+    depends_on:
+      - lightpanda
+
+  # Navegador Headless Ultraleve Lightpanda (~30MB RAM)
+  lightpanda:
+    image: lightpanda/browser:nightly
+    container_name: s-job-crawler-browser
+    restart: unless-stopped
+    command: ["serve", "--host", "0.0.0.0", "--port", "9222"]
+    ports:
+      - "9222:9222"

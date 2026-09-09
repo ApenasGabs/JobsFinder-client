@@ -8,6 +8,8 @@ import { ConfigService } from './services/config.js';
 import { CrawlerService } from './services/crawler.js';
 import { ScraperRegistry } from './scrapers/base.js';
 import { LightpandaEngine } from './engines/lightpanda.js';
+import { WhatsAppBot } from './bot/whatsapp.js';
+import { SchedulerService } from './services/scheduler.js';
 import { ContractType, SeniorityLevel, WorkModel, ScrapeOptions } from './types.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -17,16 +19,25 @@ const DIST_DIR = path.resolve(__dirname, '../dist');
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 const HOST = '127.0.0.1'; // Escuta estritamente em localhost por segurança
+const HOST = process.env.HOST || '0.0.0.0'; // Permite mapeamento de portas em containers Docker
 
 app.use(cors({
   origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000', 'http://127.0.0.1:3000'],
+  origin: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
 app.use(express.json());
 
 // Inicializa os serviços
+// Inicializa os serviços centrais
 StorageService.initialize();
 CrawlerService.initialize();
+SchedulerService.initialize();
+
+// Inicializa o Bot do WhatsApp se habilitado ou se configurado para conectar
+WhatsAppBot.initialize().catch((err) => {
+  console.warn('[Server] WhatsApp Bot aguardando pareamento ou inicialização:', err);
+});
 
 // 1. Health check & estatísticas de baixo consumo
 app.get('/api/health', (_req: Request, res: Response) => {
@@ -51,6 +62,8 @@ app.get('/api/config', (_req: Request, res: Response) => {
 app.put('/api/config', (req: Request, res: Response) => {
   try {
     const updated = ConfigService.updateConfig(req.body);
+    // Reinicia o agendador se a frequência do cron mudou
+    SchedulerService.initialize();
     res.json({ success: true, config: updated });
   } catch (err) {
     res.status(400).json({ error: 'Erro ao atualizar configuração' });
@@ -111,6 +124,52 @@ app.delete('/api/jobs', (_req: Request, res: Response) => {
 });
 
 // 7. STREAMING EM TEMPO REAL VIA SERVER-SENT EVENTS (SSE)
+// 7. ROTAS DO BOT WHATSAPP (BAILEYS)
+app.get('/api/whatsapp/status', (_req: Request, res: Response) => {
+  res.json(WhatsAppBot.getStatus());
+});
+
+app.post('/api/whatsapp/config', (req: Request, res: Response) => {
+  const { enabled, targetGroupJid, targetGroupName } = req.body;
+  const current = ConfigService.getConfig();
+
+  const updatedConfig = ConfigService.updateConfig({
+    whatsapp: {
+      enabled: enabled ?? current.whatsapp?.enabled ?? false,
+      targetGroupJid: targetGroupJid ?? current.whatsapp?.targetGroupJid ?? '',
+      targetGroupName: targetGroupName ?? current.whatsapp?.targetGroupName ?? '',
+      sendDigestIfMoreThan: current.whatsapp?.sendDigestIfMoreThan ?? 5
+    }
+  });
+
+  res.json({ success: true, whatsapp: updatedConfig.whatsapp });
+});
+
+app.get('/api/whatsapp/groups', async (_req: Request, res: Response) => {
+  const groups = await WhatsAppBot.getParticipatingGroups();
+  res.json({ groups });
+});
+
+app.post('/api/whatsapp/test', async (_req: Request, res: Response) => {
+  const result = await WhatsAppBot.sendTestMessage();
+  res.json(result);
+});
+
+// 8. ROTAS DO AGENDADOR (SCHEDULER)
+app.get('/api/scheduler/status', (_req: Request, res: Response) => {
+  res.json(SchedulerService.getStatus());
+});
+
+app.post('/api/scheduler/trigger', async (_req: Request, res: Response) => {
+  try {
+    const result = await SchedulerService.runScrapeAndNotify();
+    res.json({ success: true, result });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Erro ao disparar varredura agendada' });
+  }
+});
+
+// 9. STREAMING EM TEMPO REAL VIA SERVER-SENT EVENTS (SSE)
 app.get('/api/scrape/stream', async (req: Request, res: Response) => {
   // Configura cabeçalhos SSE
   res.setHeader('Content-Type', 'text/event-stream');
@@ -166,6 +225,7 @@ app.get('/api/scrape/stream', async (req: Request, res: Response) => {
 });
 
 // 8. Disparo síncrono/POST (alternativa ao SSE)
+// 10. Disparo síncrono/POST (alternativa ao SSE)
 app.post('/api/scrape', async (req: Request, res: Response) => {
   if (CrawlerService.isScraping()) {
     res.status(409).json({ error: 'Já existe uma busca em andamento.' });
@@ -193,6 +253,7 @@ app.post('/api/scrape', async (req: Request, res: Response) => {
 if (fs.existsSync(DIST_DIR)) {
   app.use(express.static(DIST_DIR));
   app.get('*', (req: Request, res: Response, next) => {
+  app.use((req: Request, res: Response, next) => {
     if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(DIST_DIR, 'index.html'));
   });
@@ -204,5 +265,7 @@ app.listen(PORT, HOST, () => {
   console.log(`📡 SSE Stream: http://${HOST}:${PORT}/api/scrape/stream`);
   console.log(`⚙️  Configuração: http://${HOST}:${PORT}/api/config`);
   console.log(`📊 Estatísticas: http://${HOST}:${PORT}/api/stats`);
+  console.log(`🤖 WhatsApp Bot: http://${HOST}:${PORT}/api/whatsapp/status`);
+  console.log(`⏰ Scheduler 24/7 ativo`);
   console.log(`====================================================`);
 });
