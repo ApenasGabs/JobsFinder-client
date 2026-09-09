@@ -25,8 +25,16 @@ export class StorageService {
       if (fs.existsSync(DATA_FILE)) {
         const content = fs.readFileSync(DATA_FILE, "utf-8");
         const jobs: Job[] = JSON.parse(content);
+        let hasMigrated = false;
         for (const job of jobs) {
+          if (job.url && job.url.includes('.gupy.io/job/')) {
+            job.url = job.url.replace('/job/', '/jobs/');
+            hasMigrated = true;
+          }
           this.jobsMap.set(job.id, job);
+        }
+        if (hasMigrated) {
+          this.scheduleSave();
         }
         console.log(
           `[Storage] Carregadas ${this.jobsMap.size} vagas do armazenamento local.`,
@@ -44,7 +52,8 @@ export class StorageService {
     title: string,
     company: string,
   ): string {
-    const raw = `${source.toLowerCase()}:${url.trim() || `${company}:${title}`}`;
+    const normalizedUrl = url && url.includes('.gupy.io/job/') ? url.replace('/job/', '/jobs/') : url;
+    const raw = `${source.toLowerCase()}:${normalizedUrl.trim() || `${company}:${title}`}`;
     return crypto.createHash("md5").update(raw).digest("hex");
   }
 
@@ -53,6 +62,10 @@ export class StorageService {
     isNew: boolean;
   } {
     this.initialize();
+
+    if (jobData.url && jobData.url.includes('.gupy.io/job/')) {
+      jobData.url = jobData.url.replace('/job/', '/jobs/');
+    }
 
     const id = this.generateJobId(
       jobData.source,

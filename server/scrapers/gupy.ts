@@ -123,9 +123,10 @@ export class GupyScraper implements BaseScraper {
                 "CLT",
               );
               const seniorityLevel = detectSeniority(title);
-              const stack = extractStack(`${title} ${item.department || ""}`);
-              const jobUrl =
-                item.careerPageUrl || `${portalUrl}/job/${item.id}`;
+              let jobUrl = item.careerPageUrl || `${portalUrl}/jobs/${item.id}`;
+              if (jobUrl.includes('.gupy.io/job/')) {
+                jobUrl = jobUrl.replace('/job/', '/jobs/');
+              }
 
               const jobData = {
                 title,
