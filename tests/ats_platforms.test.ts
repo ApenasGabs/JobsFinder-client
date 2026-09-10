@@ -13,12 +13,15 @@ describe("ATS Platform Scrapers - Unit Tests", () => {
     });
 
     it("should fetch real jobs from Ashby public API", async () => {
-      const response = await fetch("https://api.ashbyhq.com/posting-api/job-board/Linear", {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
-        }
-      });
+      const response = await fetch(
+        "https://api.ashbyhq.com/posting-api/job-board/Linear",
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+          },
+        },
+      );
       assert.equal(response.ok, true);
       const data = await response.json();
       assert.ok(Array.isArray(data.jobs));
@@ -36,12 +39,15 @@ describe("ATS Platform Scrapers - Unit Tests", () => {
     });
 
     it("should fetch real jobs from Greenhouse public API for QuintoAndar", async () => {
-      const response = await fetch("https://boards-api.greenhouse.io/v1/boards/quintoandar/jobs?content=true", {
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"
-        }
-      });
+      const response = await fetch(
+        "https://boards-api.greenhouse.io/v1/boards/quintoandar/jobs?content=true",
+        {
+          headers: {
+            Accept: "application/json",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
+          },
+        },
+      );
       assert.equal(response.ok, true);
       const data = await response.json();
       assert.ok(Array.isArray(data.jobs));

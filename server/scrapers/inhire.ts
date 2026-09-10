@@ -6,6 +6,7 @@ import {
   detectSeniority,
   detectWorkModel,
   extractStack,
+  slugifyInHire,
 } from "../utils/normalizer.js";
 import { runWithConcurrency } from "../utils/pool.js";
 import { BaseScraper } from "./base.js";
@@ -92,7 +93,8 @@ export class InHireScraper implements BaseScraper {
               item.location || (model === "REMOTO" ? "Remoto" : "Brasil");
             const contractType = detectContractType(title, "CLT");
             const seniorityLevel = detectSeniority(title);
-            const jobUrl = `https://${company.slug}.inhire.app/vagas/${item.jobId}`;
+            const slug = slugifyInHire(title);
+            const jobUrl = `https://${company.slug}.inhire.app/vagas/${item.jobId}/${slug}`;
             const stack = extractStack(title);
 
             const jobData = {

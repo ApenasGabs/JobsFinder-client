@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it, before } from "node:test";
+import { before, describe, it } from "node:test";
 import { StorageService } from "../server/services/storage.js";
 import { Job } from "../server/types.js";
 
@@ -18,7 +18,7 @@ describe("StorageService", () => {
       seniorityLevel: "PLENO",
       url: "https://venturus.inhire.app/vagas/test-uuid-1",
       source: "INHIRE",
-      stack: ["React", "Node"]
+      stack: ["React", "Node"],
     };
 
     const { job, isNew } = StorageService.upsertJob(jobData);
@@ -39,7 +39,7 @@ describe("StorageService", () => {
       seniorityLevel: "SENIOR",
       url: "https://venturus.inhire.app/vagas/unit-test-inhire",
       source: "INHIRE",
-      stack: ["Python"]
+      stack: ["Python"],
     });
 
     StorageService.upsertJob({
@@ -51,22 +51,37 @@ describe("StorageService", () => {
       seniorityLevel: "SENIOR",
       url: "https://jobs.lever.co/aleph/unit-test-lever",
       source: "LEVER",
-      stack: ["Java"]
+      stack: ["Java"],
     });
 
-    const inhireResult = StorageService.getJobs({ source: "INHIRE", pageSize: 100 });
+    const inhireResult = StorageService.getJobs({
+      source: "INHIRE",
+      pageSize: 100,
+    });
     assert.ok(inhireResult.jobs.length > 0);
-    assert.ok(inhireResult.jobs.every(j => j.source === "INHIRE"), "Todas as vagas devem ter source INHIRE");
+    assert.ok(
+      inhireResult.jobs.every((j) => j.source === "INHIRE"),
+      "Todas as vagas devem ter source INHIRE",
+    );
 
-    const leverResult = StorageService.getJobs({ source: "LEVER", pageSize: 100 });
+    const leverResult = StorageService.getJobs({
+      source: "LEVER",
+      pageSize: 100,
+    });
     assert.ok(leverResult.jobs.length > 0);
-    assert.ok(leverResult.jobs.every(j => j.source === "LEVER"), "Todas as vagas devem ter source LEVER");
+    assert.ok(
+      leverResult.jobs.every((j) => j.source === "LEVER"),
+      "Todas as vagas devem ter source LEVER",
+    );
   });
 
   it("should search jobs by text across title, company, stack", () => {
-    const searchResult = StorageService.getJobs({ search: "Venturus", pageSize: 10 });
+    const searchResult = StorageService.getJobs({
+      search: "Venturus",
+      pageSize: 10,
+    });
     assert.ok(searchResult.jobs.length > 0);
-    assert.ok(searchResult.jobs.some(j => j.company === "Venturus"));
+    assert.ok(searchResult.jobs.some((j) => j.company === "Venturus"));
   });
 
   it("should paginate correctly with total count and page slice", () => {

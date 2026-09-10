@@ -97,8 +97,16 @@ app.get("/api/sources", async (_req: Request, res: Response) => {
 
 // 4. Consulta de Vagas com Filtros e Paginação
 app.get("/api/jobs", (req: Request, res: Response) => {
-  const { search, source, workModel, seniority, contractType, notified, page, pageSize } =
-    req.query;
+  const {
+    search,
+    source,
+    workModel,
+    seniority,
+    contractType,
+    notified,
+    page,
+    pageSize,
+  } = req.query;
 
   const result = StorageService.getJobs({
     search: search ? String(search) : undefined,

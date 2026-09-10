@@ -206,7 +206,7 @@ export class StorageService {
     workModel?: WorkModel;
     seniority?: SeniorityLevel;
     contractType?: ContractType;
-    notified?: 'ALL' | 'PENDING' | 'NOTIFIED' | string;
+    notified?: "ALL" | "PENDING" | "NOTIFIED" | string;
     page?: number;
     pageSize?: number;
   }): { jobs: Job[]; total: number; page: number; pageSize: number } {
@@ -215,7 +215,8 @@ export class StorageService {
     let all = Array.from(this.jobsMap.values());
 
     if (filters) {
-      const { search, source, workModel, seniority, contractType, notified } = filters;
+      const { search, source, workModel, seniority, contractType, notified } =
+        filters;
 
       if (search && search.trim()) {
         const q = search.toLowerCase().trim();
