@@ -41,7 +41,9 @@ export class LeverScraper implements BaseScraper {
     }) => void,
   ): Promise<Job[]> {
     const config = ConfigService.getConfig();
-    const companies = (config.leverCompanies || []).filter((c) => c.enabled !== false);
+    const companies = (config.leverCompanies || []).filter(
+      (c) => c.enabled !== false,
+    );
     const keywords = (options.keywords || [])
       .map((k) => k.toLowerCase().trim())
       .filter(Boolean);
@@ -72,7 +74,8 @@ export class LeverScraper implements BaseScraper {
           if (Array.isArray(jobsList)) {
             for (const item of jobsList) {
               const title = item.text || "Vaga sem título";
-              const team = item.categories?.team || item.categories?.department || "";
+              const team =
+                item.categories?.team || item.categories?.department || "";
               const textToMatch = `${title} ${team}`.toLowerCase();
 
               if (keywords.length > 0) {
@@ -84,16 +87,24 @@ export class LeverScraper implements BaseScraper {
               const wp = item.workplaceType?.toLowerCase();
               if (wp === "remote") model = "REMOTO";
               else if (wp === "hybrid") model = "HIBRIDO";
-              else if (wp === "onsite" || wp === "on-site") model = "PRESENCIAL";
-              else model = detectWorkModel(title + " " + (item.categories?.location || ""));
+              else if (wp === "onsite" || wp === "on-site")
+                model = "PRESENCIAL";
+              else
+                model = detectWorkModel(
+                  title + " " + (item.categories?.location || ""),
+                );
 
-              const location = item.categories?.location || (model === "REMOTO" ? "Remoto" : "Global");
+              const location =
+                item.categories?.location ||
+                (model === "REMOTO" ? "Remoto" : "Global");
               const contractType = detectContractType(
                 item.categories?.commitment || title,
                 "CLT",
               );
               const seniorityLevel = detectSeniority(title);
-              const jobUrl = item.hostedUrl || `https://jobs.lever.co/${company.slug}/${item.id}`;
+              const jobUrl =
+                item.hostedUrl ||
+                `https://jobs.lever.co/${company.slug}/${item.id}`;
               const stack = extractStack(`${title} ${team}`);
 
               const jobData = {

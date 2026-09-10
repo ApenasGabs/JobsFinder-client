@@ -913,6 +913,12 @@
   },
   "inhireCompanies": [
     {
+      "name": "Venturus",
+      "slug": "venturus",
+      "link": "https://venturus.inhire.app/vagas/",
+      "enabled": true
+    },
+    {
       "name": "DB1",
       "slug": "db1",
       "link": "https://db1.inhire.app",

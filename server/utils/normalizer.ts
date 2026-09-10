@@ -13,16 +13,16 @@ export function detectSeniority(text: string): SeniorityLevel {
   if (t.includes('estágio') || t.includes('estagio') || t.includes('estagiário') || t.includes('intern')) {
     return 'ESTAGIO';
   }
-  if (t.includes('júnior') || t.includes('junior') || t.includes(' jr') || t.includes('jr.') || t.startsWith('jr ')) {
+  if (t.includes('júnior') || t.includes('junior') || /\bjr\b/i.test(t)) {
     return 'JUNIOR';
-  }
-  if (t.includes('sênior') || t.includes('senior') || t.includes(' sr') || t.includes('sr.') || t.startsWith('sr ') || t.includes('lead') || t.includes('tech lead')) {
-    return 'SENIOR';
   }
   if (t.includes('especialista') || t.includes('principal') || t.includes('staff')) {
     return 'ESPECIALISTA';
   }
-  if (t.includes('pleno') || t.includes(' pl') || t.includes('pl.') || t.startsWith('pl ')) {
+  if (t.includes('sênior') || t.includes('senior') || /\bsr\b/i.test(t) || t.includes('lead') || t.includes('tech lead')) {
+    return 'SENIOR';
+  }
+  if (t.includes('pleno') || t.includes('mid-level') || t.includes('mid level') || /\bpl\b/i.test(t)) {
     return 'PLENO';
   }
   return 'NAO_INFORMADO';
@@ -36,7 +36,7 @@ export function detectWorkModel(text: string): WorkModel {
   if (t.includes('híbrido') || t.includes('hibrido') || t.includes('hybrid')) {
     return 'HIBRIDO';
   }
-  if (t.includes('presencial') || t.includes('on-site') || t.includes('onsite')) {
+  if (t.includes('presencial') || t.includes('on-site') || t.includes('onsite') || t.includes('on site') || t.includes('no local')) {
     return 'PRESENCIAL';
   }
   return 'NAO_INFORMADO';
@@ -50,7 +50,7 @@ export function detectContractType(text: string, defaultType: ContractType = 'CL
   if (t.includes('pj') || t.includes('pessoa jurídica') || t.includes('prestador de serviços')) {
     return 'PJ';
   }
-  if (t.includes('estágio') || t.includes('estagio')) {
+  if (t.includes('estágio') || t.includes('estagio') || t.includes('estagiário') || t.includes('internship') || t.includes('intern')) {
     return 'ESTAGIO';
   }
   if (t.includes('clt') || t.includes('efetivo')) {

@@ -34,7 +34,9 @@ export class InHireScraper implements BaseScraper {
     }) => void,
   ): Promise<Job[]> {
     const config = ConfigService.getConfig();
-    const companies = (config.inhireCompanies || []).filter((c) => c.enabled !== false);
+    const companies = (config.inhireCompanies || []).filter(
+      (c) => c.enabled !== false,
+    );
     const keywords = (options.keywords || [])
       .map((k) => k.toLowerCase().trim())
       .filter(Boolean);
@@ -68,7 +70,8 @@ export class InHireScraper implements BaseScraper {
           const companyName = data.tenantName || company.name;
 
           for (const item of jobsList) {
-            if (item.status && item.status.toLowerCase() !== "published") continue;
+            if (item.status && item.status.toLowerCase() !== "published")
+              continue;
 
             const title = item.displayName || "Vaga sem título";
             const textToMatch = `${title} ${item.location || ""}`.toLowerCase();
@@ -85,7 +88,8 @@ export class InHireScraper implements BaseScraper {
             else if (wp === "on-site" || wp === "onsite") model = "PRESENCIAL";
             else model = detectWorkModel(title);
 
-            const location = item.location || (model === "REMOTO" ? "Remoto" : "Brasil");
+            const location =
+              item.location || (model === "REMOTO" ? "Remoto" : "Brasil");
             const contractType = detectContractType(title, "CLT");
             const seniorityLevel = detectSeniority(title);
             const jobUrl = `https://${company.slug}.inhire.app/vagas/${item.jobId}`;

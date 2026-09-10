@@ -45,7 +45,9 @@ export class AshbyScraper implements BaseScraper {
     }) => void,
   ): Promise<Job[]> {
     const config = ConfigService.getConfig();
-    const companies = (config.ashbyCompanies || []).filter((c) => c.enabled !== false);
+    const companies = (config.ashbyCompanies || []).filter(
+      (c) => c.enabled !== false,
+    );
     const keywords = (options.keywords || [])
       .map((k) => k.toLowerCase().trim())
       .filter(Boolean);
@@ -85,11 +87,17 @@ export class AshbyScraper implements BaseScraper {
             }
 
             let model: WorkModel = "NAO_INFORMADO";
-            if (item.isRemote === true || item.workplaceType?.toLowerCase() === "remote") {
+            if (
+              item.isRemote === true ||
+              item.workplaceType?.toLowerCase() === "remote"
+            ) {
               model = "REMOTO";
             } else if (item.workplaceType?.toLowerCase() === "hybrid") {
               model = "HIBRIDO";
-            } else if (item.workplaceType?.toLowerCase() === "onsite" || item.workplaceType?.toLowerCase() === "on-site") {
+            } else if (
+              item.workplaceType?.toLowerCase() === "onsite" ||
+              item.workplaceType?.toLowerCase() === "on-site"
+            ) {
               model = "PRESENCIAL";
             } else {
               model = detectWorkModel(title + " " + (item.location || ""));
@@ -101,7 +109,9 @@ export class AshbyScraper implements BaseScraper {
               postal?.addressRegion,
               postal?.addressCountry,
             ].filter(Boolean);
-            const location = locationParts.join(", ") || (model === "REMOTO" ? "Remoto" : "Global");
+            const location =
+              locationParts.join(", ") ||
+              (model === "REMOTO" ? "Remoto" : "Global");
 
             const contractType = detectContractType(
               item.employmentType || title,

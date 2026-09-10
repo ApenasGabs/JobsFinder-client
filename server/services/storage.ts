@@ -206,6 +206,7 @@ export class StorageService {
     workModel?: WorkModel;
     seniority?: SeniorityLevel;
     contractType?: ContractType;
+    notified?: 'ALL' | 'PENDING' | 'NOTIFIED' | string;
     page?: number;
     pageSize?: number;
   }): { jobs: Job[]; total: number; page: number; pageSize: number } {
@@ -214,7 +215,7 @@ export class StorageService {
     let all = Array.from(this.jobsMap.values());
 
     if (filters) {
-      const { search, source, workModel, seniority, contractType } = filters;
+      const { search, source, workModel, seniority, contractType, notified } = filters;
 
       if (search && search.trim()) {
         const q = search.toLowerCase().trim();
@@ -233,16 +234,22 @@ export class StorageService {
         );
       }
 
-      if (workModel && workModel !== "NAO_INFORMADO") {
+      if (workModel && workModel !== "ALL") {
         all = all.filter((j) => j.workModel === workModel);
       }
 
-      if (seniority && seniority !== "NAO_INFORMADO") {
+      if (seniority && seniority !== "ALL") {
         all = all.filter((j) => j.seniorityLevel === seniority);
       }
 
-      if (contractType) {
+      if (contractType && contractType !== "ALL") {
         all = all.filter((j) => j.contractType === contractType);
+      }
+
+      if (notified === "PENDING") {
+        all = all.filter((j) => !j.notifiedAt);
+      } else if (notified === "NOTIFIED") {
+        all = all.filter((j) => !!j.notifiedAt);
       }
     }
 

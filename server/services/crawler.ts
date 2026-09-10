@@ -1,16 +1,16 @@
-import { ScraperRegistry } from '../scrapers/base.js';
-import { GupyScraper } from '../scrapers/gupy.js';
-import { InHireScraper } from '../scrapers/inhire.js';
-import { AshbyScraper } from '../scrapers/ashby.js';
-import { LeverScraper } from '../scrapers/lever.js';
-import { GreenhouseScraper } from '../scrapers/greenhouse.js';
-import { WorkableScraper } from '../scrapers/workable.js';
-import { RemoteOKScraper } from '../scrapers/remoteok.js';
-import { ProgramathorScraper } from '../scrapers/programathor.js';
-import { Freelas99Scraper } from '../scrapers/freelas99.js';
-import { GeekHunterScraper } from '../scrapers/geekhunter.js';
-import { Job, ScrapeOptions, ScrapeProgressEvent } from '../types.js';
-import { StorageService } from './storage.js';
+import { AshbyScraper } from "../scrapers/ashby.js";
+import { ScraperRegistry } from "../scrapers/base.js";
+import { Freelas99Scraper } from "../scrapers/freelas99.js";
+import { GeekHunterScraper } from "../scrapers/geekhunter.js";
+import { GreenhouseScraper } from "../scrapers/greenhouse.js";
+import { GupyScraper } from "../scrapers/gupy.js";
+import { InHireScraper } from "../scrapers/inhire.js";
+import { LeverScraper } from "../scrapers/lever.js";
+import { ProgramathorScraper } from "../scrapers/programathor.js";
+import { RemoteOKScraper } from "../scrapers/remoteok.js";
+import { WorkableScraper } from "../scrapers/workable.js";
+import { Job, ScrapeOptions, ScrapeProgressEvent } from "../types.js";
+import { StorageService } from "./storage.js";
 
 export class CrawlerService {
   private static isRegistered = false;
@@ -32,7 +32,9 @@ export class CrawlerService {
 
     StorageService.initialize();
     this.isRegistered = true;
-    console.log('[CrawlerService] Todos os 10 scrapers registrados com sucesso.');
+    console.log(
+      "[CrawlerService] Todos os 10 scrapers registrados com sucesso.",
+    );
   }
 
   public static isScraping(): boolean {
@@ -41,12 +43,12 @@ export class CrawlerService {
 
   public static async executeScrape(
     options: ScrapeOptions,
-    onProgress: (event: ScrapeProgressEvent) => void
+    onProgress: (event: ScrapeProgressEvent) => void,
   ): Promise<{ totalFound: number; durationMs: number; jobs: Job[] }> {
     this.initialize();
 
     if (this.isRunning) {
-      throw new Error('Uma busca já está em andamento. Aguarde a conclusão.');
+      throw new Error("Uma busca já está em andamento. Aguarde a conclusão.");
     }
 
     this.isRunning = true;
@@ -54,40 +56,44 @@ export class CrawlerService {
     const collectedJobs: Job[] = [];
 
     onProgress({
-      type: 'start',
-      message: 'Iniciando varredura unificada de vagas...',
-      totalFound: 0
+      type: "start",
+      message: "Iniciando varredura unificada de vagas...",
+      totalFound: 0,
     });
 
     try {
-      const selectedSources = (options.sources && options.sources.length > 0)
-        ? options.sources.map((s) => s.toUpperCase())
-        : [
-            'GUPY',
-            'INHIRE',
-            'ASHBY',
-            'LEVER',
-            'GREENHOUSE',
-            'WORKABLE',
-            'REMOTEOK',
-            'PROGRAMATHOR',
-            'FREELAS_99',
-            'GEEKHUNTER'
-          ];
+      const selectedSources =
+        options.sources && options.sources.length > 0
+          ? options.sources.map((s) => s.toUpperCase())
+          : [
+              "GUPY",
+              "INHIRE",
+              "ASHBY",
+              "LEVER",
+              "GREENHOUSE",
+              "WORKABLE",
+              "REMOTEOK",
+              "PROGRAMATHOR",
+              "FREELAS_99",
+              "GEEKHUNTER",
+            ];
 
       const scrapers = selectedSources
         .map((s) => ScraperRegistry.get(s))
         .filter((s): s is NonNullable<typeof s> => Boolean(s));
 
-      console.log(`[CrawlerService] Disparando ${scrapers.length} scrapers para os termos:`, options.keywords);
+      console.log(
+        `[CrawlerService] Disparando ${scrapers.length} scrapers para os termos:`,
+        options.keywords,
+      );
 
       // Executa os scrapers selecionados em paralelo
       const promises = scrapers.map(async (scraper) => {
         try {
           onProgress({
-            type: 'progress',
+            type: "progress",
             source: scraper.id,
-            message: `Iniciando scraper: ${scraper.name}`
+            message: `Iniciando scraper: ${scraper.name}`,
           });
 
           const jobs = await scraper.scrape(
@@ -95,36 +101,36 @@ export class CrawlerService {
             (newJob) => {
               collectedJobs.push(newJob);
               onProgress({
-                type: 'job',
+                type: "job",
                 source: scraper.id,
                 job: newJob,
-                totalFound: collectedJobs.length
+                totalFound: collectedJobs.length,
               });
             },
             (progress) => {
               onProgress({
-                type: 'progress',
+                type: "progress",
                 source: scraper.id,
                 message: progress.message,
                 currentCompany: progress.currentCompany,
-                progressPercent: progress.percent
+                progressPercent: progress.percent,
               });
-            }
+            },
           );
 
           onProgress({
-            type: 'source_done',
+            type: "source_done",
             source: scraper.id,
-            message: `${scraper.name} concluído com ${jobs.length} vagas.`
+            message: `${scraper.name} concluído com ${jobs.length} vagas.`,
           });
 
           return jobs;
         } catch (err) {
           console.error(`[CrawlerService] Erro no scraper ${scraper.id}:`, err);
           onProgress({
-            type: 'error',
+            type: "error",
             source: scraper.id,
-            message: `Falha ao executar ${scraper.name}`
+            message: `Falha ao executar ${scraper.name}`,
           });
           return [];
         }
@@ -137,19 +143,18 @@ export class CrawlerService {
 
       const durationMs = Date.now() - startTime;
       onProgress({
-        type: 'done',
+        type: "done",
         message: `Busca concluída em ${(durationMs / 1000).toFixed(1)}s! Total de ${collectedJobs.length} vagas encontradas.`,
-        totalFound: collectedJobs.length
+        totalFound: collectedJobs.length,
       });
 
       return {
         totalFound: collectedJobs.length,
         durationMs,
-        jobs: collectedJobs
+        jobs: collectedJobs,
       };
     } finally {
       this.isRunning = false;
     }
   }
 }
-

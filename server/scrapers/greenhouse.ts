@@ -37,7 +37,9 @@ export class GreenhouseScraper implements BaseScraper {
     }) => void,
   ): Promise<Job[]> {
     const config = ConfigService.getConfig();
-    const companies = (config.greenhouseCompanies || []).filter((c) => c.enabled !== false);
+    const companies = (config.greenhouseCompanies || []).filter(
+      (c) => c.enabled !== false,
+    );
     const keywords = (options.keywords || [])
       .map((k) => k.toLowerCase().trim())
       .filter(Boolean);
@@ -78,11 +80,14 @@ export class GreenhouseScraper implements BaseScraper {
 
             const locationName = item.location?.name || "";
             let model: WorkModel = detectWorkModel(`${title} ${locationName}`);
-            const location = locationName || (model === "REMOTO" ? "Remoto" : "Global");
+            const location =
+              locationName || (model === "REMOTO" ? "Remoto" : "Global");
 
             const contractType = detectContractType(title, "CLT");
             const seniorityLevel = detectSeniority(title);
-            const jobUrl = item.absolute_url || `https://boards.greenhouse.io/${company.slug}/jobs/${item.id}`;
+            const jobUrl =
+              item.absolute_url ||
+              `https://boards.greenhouse.io/${company.slug}/jobs/${item.id}`;
             const stack = extractStack(`${title} ${dept}`);
 
             const jobData = {

@@ -101,4 +101,3 @@ export interface AppConfig {
   whatsapp?: WhatsAppConfig;
   scheduler?: SchedulerConfig;
 }
-

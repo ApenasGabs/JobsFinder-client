@@ -40,7 +40,9 @@ export class WorkableScraper implements BaseScraper {
     }) => void,
   ): Promise<Job[]> {
     const config = ConfigService.getConfig();
-    const companies = (config.workableCompanies || []).filter((c) => c.enabled !== false);
+    const companies = (config.workableCompanies || []).filter(
+      (c) => c.enabled !== false,
+    );
     const keywords = (options.keywords || [])
       .map((k) => k.toLowerCase().trim())
       .filter(Boolean);
@@ -89,8 +91,14 @@ export class WorkableScraper implements BaseScraper {
               model = detectWorkModel(title);
             }
 
-            const locationParts = [item.location?.city, item.location?.region, item.location?.country].filter(Boolean);
-            const location = locationParts.join(", ") || (model === "REMOTO" ? "Remoto" : "Global");
+            const locationParts = [
+              item.location?.city,
+              item.location?.region,
+              item.location?.country,
+            ].filter(Boolean);
+            const location =
+              locationParts.join(", ") ||
+              (model === "REMOTO" ? "Remoto" : "Global");
 
             const contractType = detectContractType(item.type || title, "CLT");
             const seniorityLevel = detectSeniority(title);

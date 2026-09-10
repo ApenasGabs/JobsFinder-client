@@ -122,6 +122,8 @@ export default function App() {
   const [contractFilter, setContractFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState('ALL');
   const [notifiedFilter, setNotifiedFilter] = useState<'ALL' | 'PENDING' | 'NOTIFIED'>('ALL');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   // Parâmetros de execução do crawler
   const [selectedTerms, setSelectedTerms] = useState<string[]>(['java', 'react', 'node']);
@@ -197,9 +199,26 @@ export default function App() {
     }
   };
 
-  const loadJobs = async () => {
+  const loadJobs = async (
+    source = sourceFilter,
+    search = searchFilter,
+    model = modelFilter,
+    contract = contractFilter,
+    notified = notifiedFilter,
+    page = currentPage,
+    size = pageSize
+  ) => {
     try {
-      const res = await fetch('/api/jobs?pageSize=100');
+      const params = new URLSearchParams();
+      if (source && source !== 'ALL') params.append('source', source);
+      if (search && search.trim()) params.append('search', search.trim());
+      if (model && model !== 'ALL') params.append('workModel', model);
+      if (contract && contract !== 'ALL') params.append('contractType', contract);
+      if (notified && notified !== 'ALL') params.append('notified', notified);
+      params.append('page', String(page));
+      params.append('pageSize', String(size));
+
+      const res = await fetch(`/api/jobs?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setJobs(data.jobs || []);
@@ -209,6 +228,10 @@ export default function App() {
       console.error('Erro ao carregar vagas:', err);
     }
   };
+
+  useEffect(() => {
+    loadJobs(sourceFilter, searchFilter, modelFilter, contractFilter, notifiedFilter, currentPage, pageSize);
+  }, [sourceFilter, searchFilter, modelFilter, contractFilter, notifiedFilter, currentPage, pageSize]);
 
   const loadStats = async () => {
     try {
@@ -507,23 +530,8 @@ export default function App() {
     loadStats();
   };
 
-  // Filtragem local instantânea
-  const filteredJobs = jobs.filter((j) => {
-    if (searchFilter) {
-      const q = searchFilter.toLowerCase();
-      const match =
-        j.title.toLowerCase().includes(q) ||
-        j.company.toLowerCase().includes(q) ||
-        j.stack.some((s) => s.toLowerCase().includes(q));
-      if (!match) return false;
-    }
-    if (modelFilter !== 'ALL' && j.workModel !== modelFilter) return false;
-    if (contractFilter !== 'ALL' && j.contractType !== contractFilter) return false;
-    if (sourceFilter !== 'ALL' && j.source !== sourceFilter) return false;
-    if (notifiedFilter === 'PENDING' && j.notifiedAt) return false;
-    if (notifiedFilter === 'NOTIFIED' && !j.notifiedAt) return false;
-    return true;
-  });
+  // Vagas retornadas e filtradas diretamente pelo servidor
+  const filteredJobs = jobs;
 
   return (
     <div>
@@ -937,26 +945,50 @@ export default function App() {
             className="search-input"
             placeholder="Filtrar vagas por título, empresa ou tecnologia..."
             value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
+            onChange={(e) => {
+              setSearchFilter(e.target.value);
+              setCurrentPage(1);
+            }}
             style={{ paddingLeft: '36px' }}
           />
         </div>
 
-        <select className="select-filter" value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}>
+        <select
+          className="select-filter"
+          value={modelFilter}
+          onChange={(e) => {
+            setModelFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+        >
           <option value="ALL">Todos os Modelos</option>
           <option value="REMOTO">Remoto</option>
           <option value="HIBRIDO">Híbrido</option>
           <option value="PRESENCIAL">Presencial</option>
         </select>
 
-        <select className="select-filter" value={contractFilter} onChange={(e) => setContractFilter(e.target.value)}>
+        <select
+          className="select-filter"
+          value={contractFilter}
+          onChange={(e) => {
+            setContractFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+        >
           <option value="ALL">Contrato (Todos)</option>
           <option value="CLT">CLT</option>
           <option value="PJ">PJ</option>
           <option value="FREELANCER">Freelancer / Projeto</option>
         </select>
 
-        <select className="select-filter" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
+        <select
+          className="select-filter"
+          value={sourceFilter}
+          onChange={(e) => {
+            setSourceFilter(e.target.value);
+            setCurrentPage(1);
+          }}
+        >
           <option value="ALL">Todas as Fontes</option>
           <option value="GUPY">Gupy</option>
           <option value="INHIRE">InHire</option>
@@ -973,7 +1005,10 @@ export default function App() {
         <select
           className="select-filter"
           value={notifiedFilter}
-          onChange={(e) => setNotifiedFilter(e.target.value as any)}
+          onChange={(e) => {
+            setNotifiedFilter(e.target.value as any);
+            setCurrentPage(1);
+          }}
           style={{
             borderColor: notifiedFilter !== 'ALL' ? '#3b82f6' : undefined,
             color: notifiedFilter === 'PENDING' ? '#fbbf24' : notifiedFilter === 'NOTIFIED' ? '#34d399' : 'white'
@@ -1112,6 +1147,57 @@ export default function App() {
         </div>
       )}
 
+      {/* Barra de Paginação */}
+      {totalJobs > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem', marginBottom: '2rem' }}>
+          <button
+            className="btn-action secondary"
+            disabled={currentPage <= 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            style={{
+              padding: '0.5rem 1.2rem',
+              borderRadius: '8px',
+              opacity: currentPage <= 1 ? 0.4 : 1,
+              cursor: currentPage <= 1 ? 'not-allowed' : 'pointer'
+            }}
+          >
+            ◀ Anterior
+          </button>
+          <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+            Página <strong style={{ color: '#f8fafc' }}>{currentPage}</strong> de{' '}
+            <strong style={{ color: '#f8fafc' }}>{Math.max(1, Math.ceil(totalJobs / pageSize))}</strong>{' '}
+            <span style={{ color: '#64748b' }}>({totalJobs} vagas encontradas)</span>
+          </span>
+          <button
+            className="btn-action secondary"
+            disabled={currentPage >= Math.ceil(totalJobs / pageSize)}
+            onClick={() => setCurrentPage((p) => p + 1)}
+            style={{
+              padding: '0.5rem 1.2rem',
+              borderRadius: '8px',
+              opacity: currentPage >= Math.ceil(totalJobs / pageSize) ? 0.4 : 1,
+              cursor: currentPage >= Math.ceil(totalJobs / pageSize) ? 'not-allowed' : 'pointer'
+            }}
+          >
+            Próxima ▶
+          </button>
+
+          <select
+            className="select-filter"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            style={{ padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}
+          >
+            <option value={25}>25 por página</option>
+            <option value={50}>50 por página</option>
+            <option value={100}>100 por página</option>
+          </select>
+        </div>
+      )}
+
       {/* Modal de Configuração */}
       {/* Modal Conectar WhatsApp com QR Code */}
       {showQrModal && (
@@ -1243,11 +1329,11 @@ export default function App() {
             {(() => {
               const currentList =
                 configModalTab === 'GUPY' ? config.gupyCompanies :
-                configModalTab === 'INHIRE' ? config.inhireCompanies :
-                configModalTab === 'ASHBY' ? config.ashbyCompanies :
-                configModalTab === 'LEVER' ? config.leverCompanies :
-                configModalTab === 'GREENHOUSE' ? config.greenhouseCompanies :
-                config.workableCompanies;
+                  configModalTab === 'INHIRE' ? config.inhireCompanies :
+                    configModalTab === 'ASHBY' ? config.ashbyCompanies :
+                      configModalTab === 'LEVER' ? config.leverCompanies :
+                        configModalTab === 'GREENHOUSE' ? config.greenhouseCompanies :
+                          config.workableCompanies;
 
               const filtered = (currentList || []).filter(c =>
                 c.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
