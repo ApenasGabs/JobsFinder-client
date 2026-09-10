@@ -118,7 +118,9 @@ app.get("/api/jobs", (req: Request, res: Response) => {
 // Contagem de vagas pendentes de envio por categoria
 app.get("/api/jobs/pending-count", (req: Request, res: Response) => {
   const { category } = req.query;
-  const jobs = StorageService.getUnnotifiedJobs(category ? String(category) : undefined);
+  const jobs = StorageService.getUnnotifiedJobs(
+    category ? String(category) : undefined,
+  );
   res.json({ count: jobs.length });
 });
 
@@ -126,7 +128,10 @@ app.get("/api/jobs/pending-count", (req: Request, res: Response) => {
 app.patch("/api/jobs/:id/notified", (req: Request, res: Response) => {
   const { id } = req.params;
   const { notified } = req.body;
-  const job = StorageService.toggleJobNotified(id, typeof notified === "boolean" ? notified : undefined);
+  const job = StorageService.toggleJobNotified(
+    id,
+    typeof notified === "boolean" ? notified : undefined,
+  );
   if (!job) {
     return res.status(404).json({ error: "Vaga não encontrada" });
   }
@@ -150,7 +155,8 @@ app.get("/api/whatsapp/status", (_req: Request, res: Response) => {
 });
 
 app.post("/api/whatsapp/config", (req: Request, res: Response) => {
-  const { enabled, targetGroupJid, targetGroupName, targetCategories } = req.body;
+  const { enabled, targetGroupJid, targetGroupName, targetCategories } =
+    req.body;
   const current = ConfigService.getConfig();
 
   const updatedConfig = ConfigService.updateConfig({
@@ -159,8 +165,8 @@ app.post("/api/whatsapp/config", (req: Request, res: Response) => {
       targetGroupJid: targetGroupJid ?? current.whatsapp?.targetGroupJid ?? "",
       targetGroupName:
         targetGroupName ?? current.whatsapp?.targetGroupName ?? "",
-      targetCategories:
-        targetCategories ?? current.whatsapp?.targetCategories ?? ["TODAS"],
+      targetCategories: targetCategories ??
+        current.whatsapp?.targetCategories ?? ["TODAS"],
       batchSize: current.whatsapp?.batchSize ?? 3,
       batchIntervalMinutes: current.whatsapp?.batchIntervalMinutes ?? 5,
     },

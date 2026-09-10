@@ -1,8 +1,14 @@
-export type WorkModel = 'REMOTO' | 'HIBRIDO' | 'PRESENCIAL' | 'NAO_INFORMADO';
+export type WorkModel = "REMOTO" | "HIBRIDO" | "PRESENCIAL" | "NAO_INFORMADO";
 
-export type ContractType = 'CLT' | 'PJ' | 'FREELANCER' | 'ESTAGIO' | 'OUTRO';
+export type ContractType = "CLT" | "PJ" | "FREELANCER" | "ESTAGIO" | "OUTRO";
 
-export type SeniorityLevel = 'ESTAGIO' | 'JUNIOR' | 'PLENO' | 'SENIOR' | 'ESPECIALISTA' | 'NAO_INFORMADO';
+export type SeniorityLevel =
+  | "ESTAGIO"
+  | "JUNIOR"
+  | "PLENO"
+  | "SENIOR"
+  | "ESPECIALISTA"
+  | "NAO_INFORMADO";
 
 export interface Job {
   id: string;
@@ -31,7 +37,7 @@ export interface ScrapeOptions {
 }
 
 export interface ScrapeProgressEvent {
-  type: 'start' | 'progress' | 'job' | 'source_done' | 'done' | 'error';
+  type: "start" | "progress" | "job" | "source_done" | "done" | "error";
   source?: string;
   job?: Job;
   message?: string;
@@ -50,7 +56,7 @@ export interface WhatsAppConfig {
 }
 
 export interface WhatsAppStatus {
-  status: 'disconnected' | 'connecting' | 'connected';
+  status: "disconnected" | "connecting" | "connected";
   botNumber: string | null;
   qrCode: string | null;
   enabled?: boolean;
@@ -68,6 +74,13 @@ export interface SchedulerConfig {
   lastRunAt?: string;
 }
 
+export interface CompanyConfig {
+  name: string;
+  link: string;
+  slug: string;
+  enabled: boolean;
+}
+
 export interface AppConfig {
   searchTerms: string[];
   seniorityLevels: string[];
@@ -79,12 +92,12 @@ export interface AppConfig {
     enabled: boolean;
     fastMode: boolean;
   }>;
-  gupyCompanies: Array<{
-    name: string;
-    link: string;
-    slug: string;
-    enabled: boolean;
-  }>;
+  gupyCompanies: CompanyConfig[];
+  inhireCompanies?: CompanyConfig[];
+  ashbyCompanies?: CompanyConfig[];
+  leverCompanies?: CompanyConfig[];
+  greenhouseCompanies?: CompanyConfig[];
+  workableCompanies?: CompanyConfig[];
   whatsapp?: WhatsAppConfig;
   scheduler?: SchedulerConfig;
 }

@@ -1,5 +1,10 @@
 import { ScraperRegistry } from '../scrapers/base.js';
 import { GupyScraper } from '../scrapers/gupy.js';
+import { InHireScraper } from '../scrapers/inhire.js';
+import { AshbyScraper } from '../scrapers/ashby.js';
+import { LeverScraper } from '../scrapers/lever.js';
+import { GreenhouseScraper } from '../scrapers/greenhouse.js';
+import { WorkableScraper } from '../scrapers/workable.js';
 import { RemoteOKScraper } from '../scrapers/remoteok.js';
 import { ProgramathorScraper } from '../scrapers/programathor.js';
 import { Freelas99Scraper } from '../scrapers/freelas99.js';
@@ -15,6 +20,11 @@ export class CrawlerService {
     if (this.isRegistered) return;
 
     ScraperRegistry.register(new GupyScraper());
+    ScraperRegistry.register(new InHireScraper());
+    ScraperRegistry.register(new AshbyScraper());
+    ScraperRegistry.register(new LeverScraper());
+    ScraperRegistry.register(new GreenhouseScraper());
+    ScraperRegistry.register(new WorkableScraper());
     ScraperRegistry.register(new RemoteOKScraper());
     ScraperRegistry.register(new ProgramathorScraper());
     ScraperRegistry.register(new Freelas99Scraper());
@@ -22,7 +32,7 @@ export class CrawlerService {
 
     StorageService.initialize();
     this.isRegistered = true;
-    console.log('[CrawlerService] Todos os scrapers registrados com sucesso.');
+    console.log('[CrawlerService] Todos os 10 scrapers registrados com sucesso.');
   }
 
   public static isScraping(): boolean {
@@ -52,7 +62,18 @@ export class CrawlerService {
     try {
       const selectedSources = (options.sources && options.sources.length > 0)
         ? options.sources.map((s) => s.toUpperCase())
-        : ['GUPY', 'REMOTEOK', 'PROGRAMATHOR', 'FREELAS_99', 'GEEKHUNTER'];
+        : [
+            'GUPY',
+            'INHIRE',
+            'ASHBY',
+            'LEVER',
+            'GREENHOUSE',
+            'WORKABLE',
+            'REMOTEOK',
+            'PROGRAMATHOR',
+            'FREELAS_99',
+            'GEEKHUNTER'
+          ];
 
       const scrapers = selectedSources
         .map((s) => ScraperRegistry.get(s))

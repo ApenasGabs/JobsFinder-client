@@ -127,7 +127,9 @@ export class StorageService {
     if (!job) return null;
 
     if (typeof notified === "boolean") {
-      job.notifiedAt = notified ? (job.notifiedAt || new Date().toISOString()) : null;
+      job.notifiedAt = notified
+        ? job.notifiedAt || new Date().toISOString()
+        : null;
     } else {
       job.notifiedAt = job.notifiedAt ? null : new Date().toISOString();
     }
@@ -136,7 +138,10 @@ export class StorageService {
     return job;
   }
 
-  public static getJobsByCategory(category?: string, unnotifiedOnly = false): Job[] {
+  public static getJobsByCategory(
+    category?: string,
+    unnotifiedOnly = false,
+  ): Job[] {
     this.initialize();
     let jobs = Array.from(this.jobsMap.values());
 
@@ -148,20 +153,26 @@ export class StorageService {
       const catUpper = category.toUpperCase().trim();
       jobs = jobs.filter((j) => {
         // Checa senioridade (ESTAGIO, JUNIOR, PLENO, SENIOR)
-        if (j.seniorityLevel && j.seniorityLevel.toUpperCase() === catUpper) return true;
+        if (j.seniorityLevel && j.seniorityLevel.toUpperCase() === catUpper)
+          return true;
         // Checa tipo de contrato (CLT, PJ, FREELANCER, ESTAGIO)
-        if (j.contractType && j.contractType.toUpperCase() === catUpper) return true;
+        if (j.contractType && j.contractType.toUpperCase() === catUpper)
+          return true;
         // Checa título para palavras-chave (ex: "estágio", "estagio", "internship")
-        if (catUpper === "ESTAGIO" && (
-          j.title.toLowerCase().includes("estág") ||
-          j.title.toLowerCase().includes("estag") ||
-          j.title.toLowerCase().includes("intern")
-        )) return true;
-        if (catUpper === "JUNIOR" && (
-          j.title.toLowerCase().includes("júnior") ||
-          j.title.toLowerCase().includes("junior") ||
-          j.title.toLowerCase().includes("jr")
-        )) return true;
+        if (
+          catUpper === "ESTAGIO" &&
+          (j.title.toLowerCase().includes("estág") ||
+            j.title.toLowerCase().includes("estag") ||
+            j.title.toLowerCase().includes("intern"))
+        )
+          return true;
+        if (
+          catUpper === "JUNIOR" &&
+          (j.title.toLowerCase().includes("júnior") ||
+            j.title.toLowerCase().includes("junior") ||
+            j.title.toLowerCase().includes("jr"))
+        )
+          return true;
         return false;
       });
     }

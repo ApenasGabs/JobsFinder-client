@@ -269,10 +269,24 @@ export class WhatsAppBot {
         : newJobs.filter((j) => {
             return targetCats.some((c) => {
               const cUpper = c.toUpperCase();
-              if (j.seniorityLevel && j.seniorityLevel.toUpperCase() === cUpper) return true;
-              if (j.contractType && j.contractType.toUpperCase() === cUpper) return true;
-              if (cUpper === "ESTAGIO" && (j.title.toLowerCase().includes("estág") || j.title.toLowerCase().includes("estag") || j.title.toLowerCase().includes("intern"))) return true;
-              if (cUpper === "JUNIOR" && (j.title.toLowerCase().includes("júnior") || j.title.toLowerCase().includes("junior") || j.title.toLowerCase().includes("jr"))) return true;
+              if (j.seniorityLevel && j.seniorityLevel.toUpperCase() === cUpper)
+                return true;
+              if (j.contractType && j.contractType.toUpperCase() === cUpper)
+                return true;
+              if (
+                cUpper === "ESTAGIO" &&
+                (j.title.toLowerCase().includes("estág") ||
+                  j.title.toLowerCase().includes("estag") ||
+                  j.title.toLowerCase().includes("intern"))
+              )
+                return true;
+              if (
+                cUpper === "JUNIOR" &&
+                (j.title.toLowerCase().includes("júnior") ||
+                  j.title.toLowerCase().includes("junior") ||
+                  j.title.toLowerCase().includes("jr"))
+              )
+                return true;
               return false;
             });
           });
@@ -305,25 +319,39 @@ export class WhatsAppBot {
   /**
    * Disparo manual de vagas por categoria
    */
-  public static async dispatchCategoryJobs(category: string): Promise<{ enqueued: number; pendingTotal: number; message: string }> {
+  public static async dispatchCategoryJobs(
+    category: string,
+  ): Promise<{ enqueued: number; pendingTotal: number; message: string }> {
     if (!this.sock || this.status !== "connected") {
-      return { enqueued: 0, pendingTotal: this.messageQueue.length, message: "Bot do WhatsApp desconectado. Conecte antes de disparar." };
+      return {
+        enqueued: 0,
+        pendingTotal: this.messageQueue.length,
+        message: "Bot do WhatsApp desconectado. Conecte antes de disparar.",
+      };
     }
     const config = ConfigService.getConfig();
     if (!config.whatsapp?.targetGroupJid) {
-      return { enqueued: 0, pendingTotal: this.messageQueue.length, message: "Nenhum grupo de WhatsApp configurado para receber vagas." };
+      return {
+        enqueued: 0,
+        pendingTotal: this.messageQueue.length,
+        message: "Nenhum grupo de WhatsApp configurado para receber vagas.",
+      };
     }
 
     const unnotified = StorageService.getUnnotifiedJobs(category);
     if (unnotified.length === 0) {
-      return { enqueued: 0, pendingTotal: this.messageQueue.length, message: `Nenhuma vaga pendente de envio para a categoria "${category}".` };
+      return {
+        enqueued: 0,
+        pendingTotal: this.messageQueue.length,
+        message: `Nenhuma vaga pendente de envio para a categoria "${category}".`,
+      };
     }
 
     const enqueued = this.enqueueJobs(unnotified);
     return {
       enqueued,
       pendingTotal: this.messageQueue.length,
-      message: `Enfileiradas ${enqueued} vagas da categoria "${category}" para disparo cadenciado a cada 5 minutos!`
+      message: `Enfileiradas ${enqueued} vagas da categoria "${category}" para disparo cadenciado a cada 5 minutos!`,
     };
   }
 
@@ -355,7 +383,9 @@ export class WhatsAppBot {
       // Pega o lote atual (ex: 3 vagas)
       const currentBatch = this.messageQueue.splice(0, batchSize);
 
-      console.log(`[WhatsApp] 📨 Enviando lote de ${currentBatch.length} vagas (Restam na fila: ${this.messageQueue.length})...`);
+      console.log(
+        `[WhatsApp] 📨 Enviando lote de ${currentBatch.length} vagas (Restam na fila: ${this.messageQueue.length})...`,
+      );
 
       for (let i = 0; i < currentBatch.length; i++) {
         const job = currentBatch[i];
@@ -363,9 +393,14 @@ export class WhatsAppBot {
           const text = this.formatSingleJobMessage(job);
           await this.sock.sendMessage(target, { text });
           StorageService.markAsNotified(job.id);
-          console.log(`[WhatsApp] ✅ Vaga enviada (${i + 1}/${currentBatch.length}): ${job.title} @ ${job.company}`);
+          console.log(
+            `[WhatsApp] ✅ Vaga enviada (${i + 1}/${currentBatch.length}): ${job.title} @ ${job.company}`,
+          );
         } catch (err: any) {
-          console.error(`[WhatsApp] Erro ao enviar vaga ${job.id}:`, err?.message || err);
+          console.error(
+            `[WhatsApp] Erro ao enviar vaga ${job.id}:`,
+            err?.message || err,
+          );
         }
 
         // Intervalo humano de 5 segundos entre mensagens do mesmo lote para anti-ban
@@ -377,7 +412,9 @@ export class WhatsAppBot {
       // Se ainda sobraram vagas na fila, agenda o próximo bloco para 5 minutos depois!
       if (this.messageQueue.length > 0) {
         this.nextBatchTimestamp = Date.now() + intervalMs;
-        console.log(`[WhatsApp] ⏳ Lote concluído. Próximo lote (${Math.min(batchSize, this.messageQueue.length)} vagas) em ${batchIntervalMinutes} minutos.`);
+        console.log(
+          `[WhatsApp] ⏳ Lote concluído. Próximo lote (${Math.min(batchSize, this.messageQueue.length)} vagas) em ${batchIntervalMinutes} minutos.`,
+        );
 
         this.batchTimer = setTimeout(() => {
           this.isProcessingQueue = false;
@@ -386,7 +423,9 @@ export class WhatsAppBot {
       } else {
         this.isProcessingQueue = false;
         this.nextBatchTimestamp = null;
-        console.log(`[WhatsApp] 🎉 Todas as vagas da fila foram enviadas com sucesso!`);
+        console.log(
+          `[WhatsApp] 🎉 Todas as vagas da fila foram enviadas com sucesso!`,
+        );
       }
     } catch (err) {
       console.error("[WhatsApp] Erro ao processar fila de mensagens:", err);

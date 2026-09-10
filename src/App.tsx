@@ -45,6 +45,11 @@ interface AppConfig {
   contractTypes: string[];
   sources: Array<{ id: string; name: string; type: string; enabled: boolean }>;
   gupyCompanies: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
+  inhireCompanies?: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
+  ashbyCompanies?: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
+  leverCompanies?: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
+  greenhouseCompanies?: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
+  workableCompanies?: Array<{ name: string; link: string; slug: string; enabled: boolean }>;
   whatsapp?: {
     enabled: boolean;
     targetGroupJid: string;
@@ -120,7 +125,7 @@ export default function App() {
 
   // Parâmetros de execução do crawler
   const [selectedTerms, setSelectedTerms] = useState<string[]>(['java', 'react', 'node']);
-  const [selectedSources, setSelectedSources] = useState<string[]>(['GUPY', 'REMOTEOK', 'PROGRAMATHOR', 'FREELAS_99', 'GEEKHUNTER']);
+  const [selectedSources, setSelectedSources] = useState<string[]>(['GUPY', 'INHIRE', 'ASHBY', 'LEVER', 'GREENHOUSE', 'WORKABLE', 'REMOTEOK', 'PROGRAMATHOR', 'FREELAS_99', 'GEEKHUNTER']);
   const [newCustomTerm, setNewCustomTerm] = useState('');
 
   // Estado da execução / SSE
@@ -684,8 +689,8 @@ export default function App() {
                       {waStatus.isProcessingQueue
                         ? '🚀 Despachando lote atual (3 mensagens completas espaçadas por 5s)...'
                         : waStatus.nextBatchRemainingSeconds && waStatus.nextBatchRemainingSeconds > 0
-                        ? `⏳ Intervalo anti-ban: Próximo lote de 3 vagas em ${Math.floor(waStatus.nextBatchRemainingSeconds / 60)}m ${waStatus.nextBatchRemainingSeconds % 60}s`
-                        : 'Aguardando liberação do próximo lote...'}
+                          ? `⏳ Intervalo anti-ban: Próximo lote de 3 vagas em ${Math.floor(waStatus.nextBatchRemainingSeconds / 60)}m ${waStatus.nextBatchRemainingSeconds % 60}s`
+                          : 'Aguardando liberação do próximo lote...'}
                     </span>
                   </div>
                 </div>
@@ -873,7 +878,12 @@ export default function App() {
             </label>
             <div className="sources-grid">
               {[
-                { id: 'GUPY', label: 'Gupy (134 Empresas)', type: 'CLT' },
+                { id: 'GUPY', label: `Gupy (${config?.gupyCompanies?.length || 134})`, type: 'CLT' },
+                { id: 'INHIRE', label: `InHire (${config?.inhireCompanies?.length || 63})`, type: 'CLT' },
+                { id: 'ASHBY', label: `Ashby (${config?.ashbyCompanies?.length || 41})`, type: 'CLT' },
+                { id: 'LEVER', label: `Lever (${config?.leverCompanies?.length || 25})`, type: 'CLT' },
+                { id: 'GREENHOUSE', label: `Greenhouse (${config?.greenhouseCompanies?.length || 7})`, type: 'CLT' },
+                { id: 'WORKABLE', label: `Workable (${config?.workableCompanies?.length || 22})`, type: 'CLT' },
                 { id: 'REMOTEOK', label: 'RemoteOK (Global)', type: 'FREELANCE' },
                 { id: 'PROGRAMATHOR', label: 'Programathor', type: 'CLT' },
                 { id: 'FREELAS_99', label: '99Freelas', type: 'FREELANCE' },
@@ -947,6 +957,11 @@ export default function App() {
         <select className="select-filter" value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}>
           <option value="ALL">Todas as Fontes</option>
           <option value="GUPY">Gupy</option>
+          <option value="INHIRE">InHire</option>
+          <option value="ASHBY">Ashby</option>
+          <option value="LEVER">Lever</option>
+          <option value="GREENHOUSE">Greenhouse</option>
+          <option value="WORKABLE">Workable</option>
           <option value="REMOTEOK">RemoteOK</option>
           <option value="PROGRAMATHOR">Programathor</option>
           <option value="FREELAS_99">99Freelas</option>

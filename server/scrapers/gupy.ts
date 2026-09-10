@@ -5,6 +5,7 @@ import {
   detectContractType,
   detectSeniority,
   detectWorkModel,
+  extractStack,
 } from "../utils/normalizer.js";
 import { runWithConcurrency } from "../utils/pool.js";
 import { BaseScraper } from "./base.js";
@@ -126,6 +127,8 @@ export class GupyScraper implements BaseScraper {
               if (jobUrl.includes(".gupy.io/job/")) {
                 jobUrl = jobUrl.replace("/job/", "/jobs/");
               }
+
+              const stack = extractStack(`${title} ${item.department || ""}`);
 
               const jobData = {
                 title,

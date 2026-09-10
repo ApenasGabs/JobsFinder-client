@@ -32,6 +32,41 @@
       "fastMode": true
     },
     {
+      "id": "INHIRE",
+      "name": "InHire (63 Startups BR)",
+      "type": "CLT",
+      "enabled": true,
+      "fastMode": true
+    },
+    {
+      "id": "ASHBY",
+      "name": "Ashby (41 Global Tech)",
+      "type": "CLT",
+      "enabled": true,
+      "fastMode": true
+    },
+    {
+      "id": "LEVER",
+      "name": "Lever (25 Tech & Startups)",
+      "type": "CLT",
+      "enabled": true,
+      "fastMode": true
+    },
+    {
+      "id": "GREENHOUSE",
+      "name": "Greenhouse (7 Top Tech)",
+      "type": "CLT",
+      "enabled": true,
+      "fastMode": true
+    },
+    {
+      "id": "WORKABLE",
+      "name": "Workable (22 Global)",
+      "type": "CLT",
+      "enabled": true,
+      "fastMode": true
+    },
+    {
       "id": "REMOTEOK",
       "name": "RemoteOK (Global)",
       "type": "FREELANCE",
@@ -58,20 +93,6 @@
       "type": "CLT",
       "enabled": true,
       "fastMode": true
-    },
-    {
-      "id": "WORKANA",
-      "name": "Workana",
-      "type": "FREELANCE",
-      "enabled": false,
-      "fastMode": true
-    },
-    {
-      "id": "LIGHTPANDA_DYNAMIC",
-      "name": "Lightpanda Engine (Portais Dinâmicos)",
-      "type": "ALL",
-      "enabled": false,
-      "fastMode": false
     }
   ],
   "gupyCompanies": [
@@ -734,6 +755,150 @@
       "link": "https://elo7.gupy.io",
       "slug": "elo7",
       "enabled": true
+    },
+    {
+      "name": "Grupo RBS",
+      "link": "https://gruporbs.gupy.io",
+      "slug": "gruporbs",
+      "enabled": true
+    },
+    {
+      "name": "DWS Brazil",
+      "link": "https://dwsbrazil.gupy.io",
+      "slug": "dwsbrazil",
+      "enabled": true
+    },
+    {
+      "name": "Minerva Foods Tecnologia",
+      "link": "https://minervatech.gupy.io",
+      "slug": "minervatech",
+      "enabled": true
+    },
+    {
+      "name": "Omie",
+      "link": "https://carreirasomie.gupy.io",
+      "slug": "carreirasomie",
+      "enabled": true
+    },
+    {
+      "name": "Code n' App",
+      "link": "https://codenapp.gupy.io",
+      "slug": "codenapp",
+      "enabled": true
+    },
+    {
+      "name": "Inmetrics S/A",
+      "link": "https://inmetrics.gupy.io",
+      "slug": "inmetrics",
+      "enabled": true
+    },
+    {
+      "name": "Onfly",
+      "link": "https://onfly.gupy.io",
+      "slug": "onfly",
+      "enabled": true
+    },
+    {
+      "name": "Aprova",
+      "link": "https://aprovadigital.gupy.io",
+      "slug": "aprovadigital",
+      "enabled": true
+    },
+    {
+      "name": "DB | CRESCER com propósito!",
+      "link": "https://db.gupy.io",
+      "slug": "db",
+      "enabled": true
+    },
+    {
+      "name": "keeggo",
+      "link": "https://keeggo.gupy.io",
+      "slug": "keeggo",
+      "enabled": true
+    },
+    {
+      "name": "Afya",
+      "link": "https://afya.gupy.io",
+      "slug": "afya",
+      "enabled": true
+    },
+    {
+      "name": "Página de EuroChem",
+      "link": "https://carreiras.gupy.io",
+      "slug": "carreiras",
+      "enabled": true
+    },
+    {
+      "name": "2Com Consulting",
+      "link": "https://2comconsulting.gupy.io",
+      "slug": "2comconsulting",
+      "enabled": true
+    },
+    {
+      "name": "Grupo 3corações",
+      "link": "https://3coracoes.gupy.io",
+      "slug": "3coracoes",
+      "enabled": true
+    },
+    {
+      "name": "3CORP Technology",
+      "link": "https://3corptechnology.gupy.io",
+      "slug": "3corptechnology",
+      "enabled": true
+    },
+    {
+      "name": "3C Services",
+      "link": "https://3cservices.gupy.io",
+      "slug": "3cservices",
+      "enabled": true
+    },
+    {
+      "name": "3R PETROLEUM",
+      "link": "https://3rpetroleum.gupy.io",
+      "slug": "3rpetroleum",
+      "enabled": true
+    },
+    {
+      "name": "3tentos - Faça parte do nosso time!",
+      "link": "https://3tentos.gupy.io",
+      "slug": "3tentos",
+      "enabled": true
+    },
+    {
+      "name": "4MK Solutions",
+      "link": "https://4mk.gupy.io",
+      "slug": "4mk",
+      "enabled": true
+    },
+    {
+      "name": "77Sol",
+      "link": "https://77sol.gupy.io",
+      "slug": "77sol",
+      "enabled": true
+    },
+    {
+      "name": "A3 Consultoria",
+      "link": "https://a3consultoria.gupy.io",
+      "slug": "a3consultoria",
+      "enabled": true
+    },
+    {
+      "name": "AACD",
+      "link": "https://aacd.gupy.io",
+      "slug": "aacd",
+      "enabled": true
+    },
+    {
+      "name": "Colégio Ábaco",
+      "link": "https://abaco.gupy.io",
+      "slug": "abaco",
+      "enabled": true
+    },
+    {
+      "name": "Abakids",
+      "link": "https://abakids.gupy.io",
+      "slug": "abakids",
+      "enabled": true
     }
   ],
   "whatsapp": {
@@ -745,5 +910,963 @@
   "scheduler": {
     "enabled": true,
     "cronSchedule": "*/30 * * * *"
-  }
+  },
+  "inhireCompanies": [
+    {
+      "name": "DB1",
+      "slug": "db1",
+      "link": "https://db1.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Rentbrella",
+      "slug": "rentbrella",
+      "link": "https://rentbrella.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Grupo Taking",
+      "slug": "grupotaking",
+      "link": "https://grupotaking.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "iHunters",
+      "slug": "ihunters",
+      "link": "https://ihunters.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "V4 Company",
+      "slug": "v4company",
+      "link": "https://v4company.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Bipa",
+      "slug": "bipa",
+      "link": "https://bipa.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Spun Mídia",
+      "slug": "spun",
+      "link": "https://spun.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Rpo Xpinc",
+      "slug": "rpo-xpinc",
+      "link": "https://rpo-xpinc.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Rhitmotech",
+      "slug": "rhitmotech",
+      "link": "https://rhitmotech.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "GRUPO Caffeine Army",
+      "slug": "caffeinearmy",
+      "link": "https://caffeinearmy.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "https://contaazul.inhire.app/",
+      "slug": "contaazul",
+      "link": "https://contaazul.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Mottu",
+      "slug": "mottu",
+      "link": "https://mottu.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Iconit",
+      "slug": "iconit",
+      "link": "https://iconit.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "180 Seguros",
+      "slug": "180seguros",
+      "link": "https://180seguros.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "2Future",
+      "slug": "2future",
+      "link": "https://2future.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "3amining",
+      "slug": "3amining",
+      "link": "https://3amining.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "3cplusnow",
+      "slug": "3cplusnow",
+      "link": "https://3cplusnow.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "3DCRIAR",
+      "slug": "3dcriar",
+      "link": "https://3dcriar.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "5C Company LLC",
+      "slug": "5ccompany",
+      "link": "https://5ccompany.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "A Players",
+      "slug": "a-players",
+      "link": "https://a-players.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "A2FBR",
+      "slug": "a2fbr",
+      "link": "https://a2fbr.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Abtatividades",
+      "slug": "abtatividades",
+      "link": "https://abtatividades.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "ABZ Serviços LTDA",
+      "slug": "abzservicos",
+      "link": "https://abzservicos.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Acerto",
+      "slug": "acerto",
+      "link": "https://acerto.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Adias Sol.Ar.",
+      "slug": "adias",
+      "link": "https://adias.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Adsplay",
+      "slug": "adsplay",
+      "link": "https://adsplay.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Advbox Software Jurídico",
+      "slug": "advbox",
+      "link": "https://advbox.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "AGROSearch",
+      "slug": "agrosearch",
+      "link": "https://agrosearch.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Agrotools",
+      "slug": "agrotools",
+      "link": "https://agrotools.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Aiko",
+      "slug": "aiko",
+      "link": "https://aiko.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Akad Seguros",
+      "slug": "akadseguros",
+      "link": "https://akadseguros.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alana",
+      "slug": "alana",
+      "link": "https://alana.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "KOFRE TECNOLOGIA",
+      "slug": "alconkofre",
+      "link": "https://alconkofre.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alea",
+      "slug": "alea",
+      "link": "https://alea.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alelo Brasil",
+      "slug": "alelo",
+      "link": "https://alelo.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Aliança Condomínios",
+      "slug": "alianca",
+      "link": "https://alianca.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "https://alice.inhire.app/vagas",
+      "slug": "alice",
+      "link": "https://alice.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alicerce",
+      "slug": "alicerce",
+      "link": "https://alicerce.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Aliseo S.A.",
+      "slug": "aliseo",
+      "link": "https://aliseo.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alliage",
+      "slug": "alliage",
+      "link": "https://alliage.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Allintra",
+      "slug": "allintra",
+      "link": "https://allintra.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alloyal",
+      "slug": "alloyal",
+      "link": "https://alloyal.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "All Set Comunicação",
+      "slug": "allset",
+      "link": "https://allset.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Allu",
+      "slug": "allu",
+      "link": "https://allu.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Almeida Junior Shopping Centers",
+      "slug": "almeidajunior",
+      "link": "https://almeidajunior.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "ALOIA AEROSPACE INC",
+      "slug": "aloiaaerospace",
+      "link": "https://aloiaaerospace.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "AlterVision",
+      "slug": "altervision",
+      "link": "https://altervision.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "AltoQi",
+      "slug": "altoqi",
+      "link": "https://altoqi.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alume",
+      "slug": "alume",
+      "link": "https://alume.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alun",
+      "slug": "alun",
+      "link": "https://alun.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Alura Fiap Pm3",
+      "slug": "alura-fiap-pm3",
+      "link": "https://alura-fiap-pm3.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "amcom.inhire.app",
+      "slug": "amcom",
+      "link": "https://amcom.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Amicci",
+      "slug": "amicci",
+      "link": "https://amicci.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Ana Couto",
+      "slug": "anacouto",
+      "link": "https://anacouto.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Ana Gaming",
+      "slug": "anagaming",
+      "link": "https://anagaming.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Andrademaia",
+      "slug": "andrademaia",
+      "link": "https://andrademaia.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Ap Digital Services",
+      "slug": "ap-digital-services",
+      "link": "https://ap-digital-services.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Appfacilita",
+      "slug": "appfacilita",
+      "link": "https://appfacilita.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Appmax",
+      "slug": "appmax",
+      "link": "https://appmax.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Aprix",
+      "slug": "aprix",
+      "link": "https://aprix.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Aprova",
+      "slug": "aprova",
+      "link": "https://aprova.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "Arcos Scale",
+      "slug": "arcosscale",
+      "link": "https://arcosscale.inhire.app",
+      "enabled": true
+    },
+    {
+      "name": "ASA Indústria",
+      "slug": "asa",
+      "link": "https://asa.inhire.app",
+      "enabled": true
+    }
+  ],
+  "ashbyCompanies": [
+    {
+      "name": "Alma",
+      "slug": "tryalma",
+      "link": "https://jobs.ashbyhq.com/tryalma",
+      "enabled": true
+    },
+    {
+      "name": "Crusoe",
+      "slug": "crusoe",
+      "link": "https://jobs.ashbyhq.com/crusoe",
+      "enabled": true
+    },
+    {
+      "name": "OpenAI",
+      "slug": "openai",
+      "link": "https://jobs.ashbyhq.com/openai",
+      "enabled": true
+    },
+    {
+      "name": "Ramp",
+      "slug": "ramp",
+      "link": "https://jobs.ashbyhq.com/ramp",
+      "enabled": true
+    },
+    {
+      "name": "Etched",
+      "slug": "etched",
+      "link": "https://jobs.ashbyhq.com/etched",
+      "enabled": true
+    },
+    {
+      "name": "Cursor",
+      "slug": "cursor",
+      "link": "https://jobs.ashbyhq.com/cursor",
+      "enabled": true
+    },
+    {
+      "name": "Decagon",
+      "slug": "decagon",
+      "link": "https://jobs.ashbyhq.com/decagon",
+      "enabled": true
+    },
+    {
+      "name": "Notion",
+      "slug": "notion",
+      "link": "https://jobs.ashbyhq.com/notion",
+      "enabled": true
+    },
+    {
+      "name": "Harvey",
+      "slug": "harvey",
+      "link": "https://jobs.ashbyhq.com/harvey",
+      "enabled": true
+    },
+    {
+      "name": "Baseten",
+      "slug": "baseten",
+      "link": "https://jobs.ashbyhq.com/baseten",
+      "enabled": true
+    },
+    {
+      "name": "Lambda",
+      "slug": "lambda",
+      "link": "https://jobs.ashbyhq.com/lambda",
+      "enabled": true
+    },
+    {
+      "name": "Acme",
+      "slug": "acme",
+      "link": "https://jobs.ashbyhq.com/acme",
+      "enabled": true
+    },
+    {
+      "name": "Applied Intuition",
+      "slug": "applied",
+      "link": "https://jobs.ashbyhq.com/applied",
+      "enabled": true
+    },
+    {
+      "name": "Basis AI",
+      "slug": "basis-ai",
+      "link": "https://jobs.ashbyhq.com/basis-ai",
+      "enabled": true
+    },
+    {
+      "name": "Rogo",
+      "slug": "rogo",
+      "link": "https://jobs.ashbyhq.com/rogo",
+      "enabled": true
+    },
+    {
+      "name": "Lindy",
+      "slug": "lindy",
+      "link": "https://jobs.ashbyhq.com/lindy",
+      "enabled": true
+    },
+    {
+      "name": "ElevenLabs",
+      "slug": "elevenlabs",
+      "link": "https://jobs.ashbyhq.com/elevenlabs",
+      "enabled": true
+    },
+    {
+      "name": "Cohere",
+      "slug": "cohere",
+      "link": "https://jobs.ashbyhq.com/cohere",
+      "enabled": true
+    },
+    {
+      "name": "Sierra",
+      "slug": "sierra",
+      "link": "https://jobs.ashbyhq.com/sierra",
+      "enabled": true
+    },
+    {
+      "name": "Synthesia",
+      "slug": "synthesia",
+      "link": "https://jobs.ashbyhq.com/synthesia",
+      "enabled": true
+    },
+    {
+      "name": "Lovable",
+      "slug": "lovable",
+      "link": "https://jobs.ashbyhq.com/lovable",
+      "enabled": true
+    },
+    {
+      "name": "Legora",
+      "slug": "legora",
+      "link": "https://jobs.ashbyhq.com/legora",
+      "enabled": true
+    },
+    {
+      "name": "Perplexity",
+      "slug": "perplexity",
+      "link": "https://jobs.ashbyhq.com/perplexity",
+      "enabled": true
+    },
+    {
+      "name": "Qdrant",
+      "slug": "qdrant",
+      "link": "https://jobs.ashbyhq.com/qdrant",
+      "enabled": true
+    },
+    {
+      "name": "Exa",
+      "slug": "exa",
+      "link": "https://jobs.ashbyhq.com/exa",
+      "enabled": true
+    },
+    {
+      "name": "Tempo",
+      "slug": "tempo",
+      "link": "https://jobs.ashbyhq.com/Tempo",
+      "enabled": true
+    },
+    {
+      "name": "Primer",
+      "slug": "primer",
+      "link": "https://jobs.ashbyhq.com/primer",
+      "enabled": true
+    },
+    {
+      "name": "Metal",
+      "slug": "metal",
+      "link": "https://jobs.ashbyhq.com/metal",
+      "enabled": true
+    },
+    {
+      "name": "Clay Labs",
+      "slug": "claylabs",
+      "link": "https://jobs.ashbyhq.com/claylabs",
+      "enabled": true
+    },
+    {
+      "name": "EliseAI",
+      "slug": "eliseai",
+      "link": "https://jobs.ashbyhq.com/eliseai",
+      "enabled": true
+    },
+    {
+      "name": "Ironclad",
+      "slug": "ironcladhq",
+      "link": "https://jobs.ashbyhq.com/ironcladhq",
+      "enabled": true
+    },
+    {
+      "name": "Air Apps",
+      "slug": "airapps",
+      "link": "https://jobs.ashbyhq.com/airapps",
+      "enabled": true
+    },
+    {
+      "name": "Deepgram",
+      "slug": "deepgram",
+      "link": "https://jobs.ashbyhq.com/deepgram",
+      "enabled": true
+    },
+    {
+      "name": "Depot",
+      "slug": "depot",
+      "link": "https://jobs.ashbyhq.com/depot",
+      "enabled": true
+    },
+    {
+      "name": "Camunda",
+      "slug": "camunda",
+      "link": "https://jobs.ashbyhq.com/camunda",
+      "enabled": true
+    },
+    {
+      "name": "Blockstream",
+      "slug": "blockstream",
+      "link": "https://jobs.ashbyhq.com/blockstream",
+      "enabled": true
+    },
+    {
+      "name": "Cosuno",
+      "slug": "cosuno",
+      "link": "https://jobs.ashbyhq.com/cosuno",
+      "enabled": true
+    },
+    {
+      "name": "DeepL",
+      "slug": "deepl",
+      "link": "https://jobs.ashbyhq.com/deepl",
+      "enabled": true
+    },
+    {
+      "name": "ALSO",
+      "slug": "ridealso",
+      "link": "https://jobs.ashbyhq.com/ridealso",
+      "enabled": true
+    },
+    {
+      "name": "Anima",
+      "slug": "anima",
+      "link": "https://jobs.ashbyhq.com/anima",
+      "enabled": true
+    },
+    {
+      "name": "REGENT",
+      "slug": "regent",
+      "link": "https://jobs.ashbyhq.com/regent",
+      "enabled": true
+    }
+  ],
+  "leverCompanies": [
+    {
+      "name": "Wealthfront",
+      "slug": "wealthfront",
+      "link": "https://jobs.lever.co/wealthfront",
+      "enabled": true
+    },
+    {
+      "name": "Jobgether",
+      "slug": "jobgether",
+      "link": "https://jobs.lever.co/jobgether",
+      "enabled": true
+    },
+    {
+      "name": "Paytm Payments Services",
+      "slug": "paytmpayments",
+      "link": "https://jobs.lever.co/paytmpayments",
+      "enabled": true
+    },
+    {
+      "name": "AO Garcia Agency",
+      "slug": "aogarciaagency",
+      "link": "https://jobs.lever.co/aogarciaagency",
+      "enabled": true
+    },
+    {
+      "name": "Spotify",
+      "slug": "spotify",
+      "link": "https://jobs.lever.co/spotify",
+      "enabled": true
+    },
+    {
+      "name": "Shield AI",
+      "slug": "shieldai",
+      "link": "https://jobs.lever.co/shieldai",
+      "enabled": true
+    },
+    {
+      "name": "Zoox",
+      "slug": "zoox",
+      "link": "https://jobs.lever.co/zoox",
+      "enabled": true
+    },
+    {
+      "name": "Institute of Foundation Models",
+      "slug": "ifm-us",
+      "link": "https://jobs.lever.co/ifm-us",
+      "enabled": true
+    },
+    {
+      "name": "HCVT",
+      "slug": "hcvt",
+      "link": "https://jobs.lever.co/hcvt",
+      "enabled": true
+    },
+    {
+      "name": "Palantir Technologies",
+      "slug": "palantir",
+      "link": "https://jobs.lever.co/palantir",
+      "enabled": true
+    },
+    {
+      "name": "Level AI",
+      "slug": "levelai",
+      "link": "https://jobs.lever.co/levelai",
+      "enabled": true
+    },
+    {
+      "name": "Datalab USA",
+      "slug": "datalabusa",
+      "link": "https://jobs.lever.co/datalabusa",
+      "enabled": true
+    },
+    {
+      "name": "Tractian",
+      "slug": "tractian",
+      "link": "https://jobs.lever.co/tractian",
+      "enabled": true
+    },
+    {
+      "name": "Sila Services",
+      "slug": "sila",
+      "link": "https://jobs.lever.co/sila",
+      "enabled": true
+    },
+    {
+      "name": "Pigment",
+      "slug": "pigment",
+      "link": "https://jobs.lever.co/pigment",
+      "enabled": true
+    },
+    {
+      "name": "Netomi",
+      "slug": "netomi",
+      "link": "https://jobs.lever.co/netomi",
+      "enabled": true
+    },
+    {
+      "name": "Emburse",
+      "slug": "emburse",
+      "link": "https://jobs.lever.co/emburse",
+      "enabled": true
+    },
+    {
+      "name": "Aleph",
+      "slug": "aleph",
+      "link": "https://jobs.lever.co/aleph",
+      "enabled": true
+    },
+    {
+      "name": "CaptivateIQ",
+      "slug": "captivateiq",
+      "link": "https://jobs.lever.co/captivateiq",
+      "enabled": true
+    },
+    {
+      "name": "Hive",
+      "slug": "hive",
+      "link": "https://jobs.lever.co/hive",
+      "enabled": true
+    },
+    {
+      "name": "Jeeves",
+      "slug": "tryjeeves",
+      "link": "https://jobs.lever.co/tryjeeves",
+      "enabled": true
+    },
+    {
+      "name": "Neon Pagamentos",
+      "slug": "neon",
+      "link": "https://jobs.lever.co/neon",
+      "enabled": true
+    },
+    {
+      "name": "Sophos",
+      "slug": "sophos",
+      "link": "https://jobs.lever.co/sophos",
+      "enabled": true
+    },
+    {
+      "name": "JumpCloud",
+      "slug": "jumpcloud",
+      "link": "https://jobs.lever.co/jumpcloud",
+      "enabled": true
+    },
+    {
+      "name": "Getty Images",
+      "slug": "gettyimages",
+      "link": "https://jobs.lever.co/gettyimages",
+      "enabled": true
+    }
+  ],
+  "greenhouseCompanies": [
+    {
+      "name": "Robinhood",
+      "slug": "robinhood",
+      "link": "https://boards.greenhouse.io/robinhood",
+      "enabled": true
+    },
+    {
+      "name": "Nubank",
+      "slug": "nubank",
+      "link": "https://boards.greenhouse.io/nubank",
+      "enabled": true
+    },
+    {
+      "name": "QuintoAndar",
+      "slug": "quintoandar",
+      "link": "https://boards.greenhouse.io/quintoandar",
+      "enabled": true
+    },
+    {
+      "name": "Loggi",
+      "slug": "loggi",
+      "link": "https://boards.greenhouse.io/loggi",
+      "enabled": true
+    },
+    {
+      "name": "Brex",
+      "slug": "brex",
+      "link": "https://boards.greenhouse.io/brex",
+      "enabled": true
+    },
+    {
+      "name": "PicPay",
+      "slug": "picpay",
+      "link": "https://boards.greenhouse.io/picpay",
+      "enabled": true
+    },
+    {
+      "name": "Kavak",
+      "slug": "kavak",
+      "link": "https://boards.greenhouse.io/kavak",
+      "enabled": true
+    }
+  ],
+  "workableCompanies": [
+    {
+      "name": "Future Publishing",
+      "slug": "futureplc",
+      "link": "https://apply.workable.com/futureplc",
+      "enabled": true
+    },
+    {
+      "name": "ProNexus",
+      "slug": "pronexus-1",
+      "link": "https://apply.workable.com/pronexus-1",
+      "enabled": true
+    },
+    {
+      "name": "NineTwoThree AI Studio",
+      "slug": "ninetwothree-ai-studio",
+      "link": "https://apply.workable.com/ninetwothree-ai-studio",
+      "enabled": true
+    },
+    {
+      "name": "DC Thomson",
+      "slug": "dcthomson",
+      "link": "https://apply.workable.com/dcthomson",
+      "enabled": true
+    },
+    {
+      "name": "Weekday AI",
+      "slug": "weekday-1",
+      "link": "https://apply.workable.com/weekday-1",
+      "enabled": true
+    },
+    {
+      "name": "Simply TV",
+      "slug": "simply-tv",
+      "link": "https://apply.workable.com/simply-tv",
+      "enabled": true
+    },
+    {
+      "name": "CoverGo",
+      "slug": "covergo",
+      "link": "https://apply.workable.com/covergo",
+      "enabled": true
+    },
+    {
+      "name": "Rokt",
+      "slug": "rokt",
+      "link": "https://apply.workable.com/rokt",
+      "enabled": true
+    },
+    {
+      "name": "pony.ai",
+      "slug": "pony-dot-ai",
+      "link": "https://apply.workable.com/pony-dot-ai",
+      "enabled": true
+    },
+    {
+      "name": "CVector - Industrial AI",
+      "slug": "cvector",
+      "link": "https://apply.workable.com/cvector",
+      "enabled": true
+    },
+    {
+      "name": "TWG Global AI",
+      "slug": "twgai",
+      "link": "https://apply.workable.com/twgai",
+      "enabled": true
+    },
+    {
+      "name": "Greenlife Healthcare Staffing",
+      "slug": "greenlife-healthcare-staffing-1",
+      "link": "https://apply.workable.com/greenlife-healthcare-staffing-1",
+      "enabled": true
+    },
+    {
+      "name": "Dable",
+      "slug": "dable",
+      "link": "https://apply.workable.com/dable",
+      "enabled": true
+    },
+    {
+      "name": "Altom Transport",
+      "slug": "altom-transport",
+      "link": "https://apply.workable.com/altom-transport",
+      "enabled": true
+    },
+    {
+      "name": "Papier",
+      "slug": "papier",
+      "link": "https://apply.workable.com/papier",
+      "enabled": true
+    },
+    {
+      "name": "Falcomm",
+      "slug": "falcomm",
+      "link": "https://apply.workable.com/falcomm",
+      "enabled": true
+    },
+    {
+      "name": "Arondite",
+      "slug": "arondite",
+      "link": "https://apply.workable.com/arondite",
+      "enabled": true
+    },
+    {
+      "name": "Homey",
+      "slug": "homey",
+      "link": "https://apply.workable.com/homey",
+      "enabled": true
+    },
+    {
+      "name": "WallStreetQuants",
+      "slug": "wallstreetquants",
+      "link": "https://apply.workable.com/wallstreetquants",
+      "enabled": true
+    },
+    {
+      "name": "Fuse Integration",
+      "slug": "fuse-integration",
+      "link": "https://apply.workable.com/fuse-integration",
+      "enabled": true
+    },
+    {
+      "name": "Junglee Games",
+      "slug": "junglee-games",
+      "link": "https://apply.workable.com/junglee-games",
+      "enabled": true
+    },
+    {
+      "name": "Talent Trader Group",
+      "slug": "talent-trader-group",
+      "link": "https://apply.workable.com/talent-trader-group",
+      "enabled": true
+    }
+  ]
 }
