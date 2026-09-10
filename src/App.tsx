@@ -138,6 +138,8 @@ export default function App() {
   }>({ message: 'Pronto para iniciar busca', percent: 0, totalFound: 0 });
 
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configModalTab, setConfigModalTab] = useState<'GUPY' | 'INHIRE' | 'ASHBY' | 'LEVER' | 'GREENHOUSE' | 'WORKABLE'>('GUPY');
+  const [configSearchTerm, setConfigSearchTerm] = useState('');
   const eventSourceRef = useRef<EventSource | null>(null);
 
   // Carrega dados iniciais
@@ -1157,34 +1159,174 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal de Configuração Geral */}
+      {/* Modal de Configuração Geral / Empresas Monitoradas */}
       {showConfigModal && config && (
         <div className="modal-overlay" onClick={() => setShowConfigModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content" style={{ maxWidth: '750px' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>⚙️ Configuração Centralizada de Busca</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <Building size={22} color="#3b82f6" />
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Empresas & Plataformas Monitoradas</h2>
+              </div>
               <button onClick={() => setShowConfigModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
 
             <p style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '1rem' }}>
-              Arquivo de configuração salvo em: <code style={{ color: '#38bdf8' }}>config/search.config.json</code>
+              Arquivo de configuração ativo: <code style={{ color: '#38bdf8' }}>config/search.config.json</code>
             </p>
 
-            <div style={{ marginBottom: '1.5rem' }}>
-              <h4 style={{ fontSize: '0.9rem', marginBottom: '0.5rem' }}>Empresas Gupy Cadastradas ({config.gupyCompanies?.length || 0}):</h4>
-              <div style={{ maxHeight: '200px', overflowY: 'auto', background: '#0f172a', padding: '0.5rem', borderRadius: '8px', border: '1px solid #334155', fontSize: '0.8rem' }}>
-                {config.gupyCompanies?.map((c, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', borderBottom: '1px solid #1e293b' }}>
-                    <span>{c.name}</span>
-                    <span style={{ color: '#64748b' }}>{c.slug}.gupy.io</span>
-                  </div>
-                ))}
-              </div>
+            {/* ATS Tabs */}
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+              {[
+                { id: 'GUPY', label: 'Gupy', count: config.gupyCompanies?.length || 0, color: '#3b82f6' },
+                { id: 'INHIRE', label: 'InHire', count: config.inhireCompanies?.length || 0, color: '#06b6d4' },
+                { id: 'ASHBY', label: 'Ashby', count: config.ashbyCompanies?.length || 0, color: '#8b5cf6' },
+                { id: 'LEVER', label: 'Lever', count: config.leverCompanies?.length || 0, color: '#10b981' },
+                { id: 'GREENHOUSE', label: 'Greenhouse', count: config.greenhouseCompanies?.length || 0, color: '#f59e0b' },
+                { id: 'WORKABLE', label: 'Workable', count: config.workableCompanies?.length || 0, color: '#ec4899' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setConfigModalTab(tab.id as any)}
+                  style={{
+                    padding: '0.4rem 0.8rem',
+                    borderRadius: '8px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: configModalTab === tab.id ? `1px solid ${tab.color}` : '1px solid #334155',
+                    background: configModalTab === tab.id ? `${tab.color}22` : '#1e293b',
+                    color: configModalTab === tab.id ? '#f8fafc' : '#94a3b8',
+                    transition: 'all 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem'
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <span style={{
+                    background: configModalTab === tab.id ? tab.color : '#334155',
+                    color: '#fff',
+                    borderRadius: '12px',
+                    padding: '0.1rem 0.45rem',
+                    fontSize: '0.72rem'
+                  }}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            {/* Quick search input */}
+            <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+              <Search size={16} color="#64748b" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                type="text"
+                placeholder={`Buscar empresa em ${configModalTab}...`}
+                value={configSearchTerm}
+                onChange={(e) => setConfigSearchTerm(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem 0.75rem 0.5rem 2.2rem',
+                  borderRadius: '6px',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  color: '#f8fafc',
+                  fontSize: '0.85rem'
+                }}
+              />
+            </div>
+
+            {/* Company List */}
+            {(() => {
+              const currentList =
+                configModalTab === 'GUPY' ? config.gupyCompanies :
+                configModalTab === 'INHIRE' ? config.inhireCompanies :
+                configModalTab === 'ASHBY' ? config.ashbyCompanies :
+                configModalTab === 'LEVER' ? config.leverCompanies :
+                configModalTab === 'GREENHOUSE' ? config.greenhouseCompanies :
+                config.workableCompanies;
+
+              const filtered = (currentList || []).filter(c =>
+                c.name.toLowerCase().includes(configSearchTerm.toLowerCase()) ||
+                c.slug.toLowerCase().includes(configSearchTerm.toLowerCase())
+              );
+
+              return (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>
+                      Exibindo {filtered.length} de {currentList?.length || 0} empresas
+                    </span>
+                  </div>
+                  <div style={{
+                    maxHeight: '320px',
+                    overflowY: 'auto',
+                    background: '#0f172a',
+                    padding: '0.5rem',
+                    borderRadius: '8px',
+                    border: '1px solid #334155',
+                    fontSize: '0.82rem'
+                  }}>
+                    {filtered.length === 0 ? (
+                      <p style={{ color: '#64748b', textAlign: 'center', padding: '1rem' }}>
+                        Nenhuma empresa encontrada com o termo "{configSearchTerm}".
+                      </p>
+                    ) : (
+                      filtered.map((c, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '0.45rem 0.5rem',
+                            borderBottom: i < filtered.length - 1 ? '1px solid #1e293b' : 'none',
+                          }}
+                        >
+                          <div>
+                            <span style={{ fontWeight: 500, color: '#f1f5f9' }}>{c.name}</span>
+                            <span style={{ color: '#64748b', marginLeft: '0.6rem', fontSize: '0.75rem' }}>
+                              ({c.slug})
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              fontSize: '0.7rem',
+                              padding: '0.15rem 0.4rem',
+                              borderRadius: '4px',
+                              background: '#10b98122',
+                              color: '#34d399',
+                              border: '1px solid #10b98144'
+                            }}>
+                              Ativa
+                            </span>
+                            {c.link && (
+                              <a
+                                href={c.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="Abrir página de carreiras"
+                                style={{ color: '#60a5fa', display: 'flex', alignItems: 'center' }}
+                              >
+                                <ExternalLink size={14} />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                Total integrado: {(config.gupyCompanies?.length || 0) + (config.inhireCompanies?.length || 0) + (config.ashbyCompanies?.length || 0) + (config.leverCompanies?.length || 0) + (config.greenhouseCompanies?.length || 0) + (config.workableCompanies?.length || 0)} empresas
+              </span>
               <button className="btn-action primary" onClick={() => setShowConfigModal(false)}>
                 Fechar
               </button>
