@@ -161,20 +161,62 @@ describe("Normalizer Utility", () => {
 
   describe("slugifyInHire", () => {
     const cases = [
-      ["Banco de Talentos Exclusivo para Diversidade", "banco-de-talentos-exclusivo-para-diversidade"],
-      ["Não encontrou uma vaga? Cadastre-se aqui!", "nao-encontrou-uma-vaga-cadastre-se-aqui"],
-      ["[1164] Especialista em IA Generativa (AWS/Azure/Copilot Studio) (Híbrido - São Paulo)", "1164-especialista-em-ia-generativa-awsazurecopilot-studio-hibrido-sao-paulo"],
-      ["[1201-1202] Pessoa Desenvolvedora Fullstack Pl (React/Python)", "1201-1202-pessoa-desenvolvedora-fullstack-pl-reactpython"],
-      ["[1203-1204] Analista de Machine Learning PL", "1203-1204-analista-de-machine-learning-pl"],
-      ["[1206] Analista de Desenvolvimento Back-end Java Pl (Remoto)", "1206-analista-de-desenvolvimento-back-end-java-pl-remoto"],
-      ["[1281] UI/UX Designer (Híbrido - Campinas)", "1281-uiux-designer-hibrido-campinas"],
-      ["[1285] Pessoa Desenvolvedora Fullstack Pl", "1285-pessoa-desenvolvedora-fullstack-pl"],
-      ["[1288] Pessoa Desenvolvedora Fullstack Pl (Python | React/Angular) (Remoto)", "1288-pessoa-desenvolvedora-fullstack-pl-python-or-reactangular-remoto"],
-      ["[1290] Pessoa Desenvolvedora Android Sr - Meios de pagamento (Remoto)", "1290-pessoa-desenvolvedora-android-sr-meios-de-pagamento-remoto"],
-      ["[1291] Analista de FP&A Pl (Híbrido - Manaus)", "1291-analista-de-fpanda-pl-hibrido-manaus"],
-      ["[1293] Pessoa Desenvolvedora Front-end React Sr (Remoto)", "1293-pessoa-desenvolvedora-front-end-react-sr-remoto"],
-      ["[1294] Pessoa Desenvolvedora Fullstack IA Generativa Sr (Remoto)", "1294-pessoa-desenvolvedora-fullstack-ia-generativa-sr-remoto"],
-      ["[1298] Pessoa Desenvolvedora Backend .NET MVC Sr (Remoto)", "1298-pessoa-desenvolvedora-backend-net-mvc-sr-remoto"]
+      [
+        "Banco de Talentos Exclusivo para Diversidade",
+        "banco-de-talentos-exclusivo-para-diversidade",
+      ],
+      [
+        "Não encontrou uma vaga? Cadastre-se aqui!",
+        "nao-encontrou-uma-vaga-cadastre-se-aqui",
+      ],
+      [
+        "[1164] Especialista em IA Generativa (AWS/Azure/Copilot Studio) (Híbrido - São Paulo)",
+        "1164-especialista-em-ia-generativa-awsazurecopilot-studio-hibrido-sao-paulo",
+      ],
+      [
+        "[1201-1202] Pessoa Desenvolvedora Fullstack Pl (React/Python)",
+        "1201-1202-pessoa-desenvolvedora-fullstack-pl-reactpython",
+      ],
+      [
+        "[1203-1204] Analista de Machine Learning PL",
+        "1203-1204-analista-de-machine-learning-pl",
+      ],
+      [
+        "[1206] Analista de Desenvolvimento Back-end Java Pl (Remoto)",
+        "1206-analista-de-desenvolvimento-back-end-java-pl-remoto",
+      ],
+      [
+        "[1281] UI/UX Designer (Híbrido - Campinas)",
+        "1281-uiux-designer-hibrido-campinas",
+      ],
+      [
+        "[1285] Pessoa Desenvolvedora Fullstack Pl",
+        "1285-pessoa-desenvolvedora-fullstack-pl",
+      ],
+      [
+        "[1288] Pessoa Desenvolvedora Fullstack Pl (Python | React/Angular) (Remoto)",
+        "1288-pessoa-desenvolvedora-fullstack-pl-python-or-reactangular-remoto",
+      ],
+      [
+        "[1290] Pessoa Desenvolvedora Android Sr - Meios de pagamento (Remoto)",
+        "1290-pessoa-desenvolvedora-android-sr-meios-de-pagamento-remoto",
+      ],
+      [
+        "[1291] Analista de FP&A Pl (Híbrido - Manaus)",
+        "1291-analista-de-fpanda-pl-hibrido-manaus",
+      ],
+      [
+        "[1293] Pessoa Desenvolvedora Front-end React Sr (Remoto)",
+        "1293-pessoa-desenvolvedora-front-end-react-sr-remoto",
+      ],
+      [
+        "[1294] Pessoa Desenvolvedora Fullstack IA Generativa Sr (Remoto)",
+        "1294-pessoa-desenvolvedora-fullstack-ia-generativa-sr-remoto",
+      ],
+      [
+        "[1298] Pessoa Desenvolvedora Backend .NET MVC Sr (Remoto)",
+        "1298-pessoa-desenvolvedora-backend-net-mvc-sr-remoto",
+      ],
     ];
 
     for (const [input, expected] of cases) {

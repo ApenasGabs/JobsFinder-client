@@ -370,7 +370,7 @@ export class WhatsAppBot {
 
     const config = ConfigService.getConfig();
     const target = config.whatsapp?.targetGroupJid;
-    const batchSize = config.whatsapp?.batchSize || 3;
+    const batchSize = config.whatsapp?.batchSize || 4;
     const batchIntervalMinutes = config.whatsapp?.batchIntervalMinutes || 5;
     const intervalMs = batchIntervalMinutes * 60 * 1000;
 
@@ -380,36 +380,30 @@ export class WhatsAppBot {
         return;
       }
 
-      // Pega o lote atual (ex: 3 vagas)
+      // Pega o lote atual (ex: 4 vagas)
       const currentBatch = this.messageQueue.splice(0, batchSize);
 
       console.log(
-        `[WhatsApp] 📨 Enviando lote de ${currentBatch.length} vagas (Restam na fila: ${this.messageQueue.length})...`,
+        `[WhatsApp] 📨 Enviando mensagem agrupada de ${currentBatch.length} vagas (Restam na fila: ${this.messageQueue.length})...`,
       );
 
-      for (let i = 0; i < currentBatch.length; i++) {
-        const job = currentBatch[i];
-        try {
-          const text = this.formatSingleJobMessage(job);
-          await this.sock.sendMessage(target, { text });
+      try {
+        const text = this.formatBatchJobMessage(currentBatch);
+        await this.sock.sendMessage(target, { text });
+        for (const job of currentBatch) {
           StorageService.markAsNotified(job.id);
-          console.log(
-            `[WhatsApp] ✅ Vaga enviada (${i + 1}/${currentBatch.length}): ${job.title} @ ${job.company}`,
-          );
-        } catch (err: any) {
-          console.error(
-            `[WhatsApp] Erro ao enviar vaga ${job.id}:`,
-            err?.message || err,
-          );
         }
-
-        // Intervalo humano de 5 segundos entre mensagens do mesmo lote para anti-ban
-        if (i < currentBatch.length - 1) {
-          await new Promise((r) => setTimeout(r, 5000));
-        }
+        console.log(
+          `[WhatsApp] ✅ Mensagem agrupada enviada com sucesso com ${currentBatch.length} vagas!`,
+        );
+      } catch (err: any) {
+        console.error(
+          `[WhatsApp] Erro ao enviar mensagem agrupada:`,
+          err?.message || err,
+        );
       }
 
-      // Se ainda sobraram vagas na fila, agenda o próximo bloco para 5 minutos depois!
+      // Se ainda sobraram vagas na fila, agenda o próximo bloco consolidado para o intervalo configurado!
       if (this.messageQueue.length > 0) {
         this.nextBatchTimestamp = Date.now() + intervalMs;
         console.log(
@@ -431,6 +425,122 @@ export class WhatsAppBot {
       console.error("[WhatsApp] Erro ao processar fila de mensagens:", err);
       this.isProcessingQueue = false;
     }
+  }
+
+  /**
+   * Formata um lote de vagas em uma única mensagem agrupada, compacta e escaneável.
+   * Elimina repetições de separadores e pés de página redundantes.
+   */
+  public static formatBatchJobMessage(
+    jobs: Job[],
+    categoryName?: string,
+  ): string {
+    if (!jobs || jobs.length === 0) return "";
+
+    const count = jobs.length;
+    const headerTitle = count === 1 ? "1 NOVA VAGA" : `${count} NOVAS VAGAS`;
+
+    let resolvedCategory = categoryName;
+    if (!resolvedCategory) {
+      const levels = Array.from(
+        new Set(jobs.map((j) => j.seniorityLevel).filter(Boolean)),
+      );
+      if (levels.length === 1 && levels[0]) {
+        resolvedCategory = levels[0];
+      }
+    }
+    const categorySuffix = resolvedCategory
+      ? ` — ${resolvedCategory.toUpperCase()}`
+      : "";
+
+    // Quick-skim highlights
+    const focusList: string[] = [];
+    const locationList: string[] = [];
+
+    for (const j of jobs) {
+      if (j.stack && Array.isArray(j.stack)) {
+        for (const s of j.stack) {
+          if (s && !focusList.includes(s)) {
+            focusList.push(s);
+          }
+        }
+      }
+      const cleanLoc = this.cleanLocation(j.location);
+      const isRemoto =
+        j.workModel === "REMOTO" || cleanLoc.toLowerCase().includes("remoto");
+      if (isRemoto && !locationList.includes("Remoto")) {
+        locationList.push("Remoto");
+      } else if (
+        cleanLoc &&
+        cleanLoc.toLowerCase() !== "brasil" &&
+        !locationList.includes(cleanLoc)
+      ) {
+        locationList.push(cleanLoc);
+      }
+    }
+
+    const lines: string[] = [
+      `🚀 *${headerTitle}${categorySuffix}*`,
+      ``,
+      `📌 *Foco:* ${focusList.length > 0 ? focusList.slice(0, 6).join(" • ") : "Geral"}`,
+      `📍 *Locais:* ${locationList.length > 0 ? locationList.slice(0, 5).join(" • ") : "Diversos"}`,
+      ``,
+    ];
+
+    const NUMBER_EMOJIS = [
+      "1️⃣",
+      "2️⃣",
+      "3️⃣",
+      "4️⃣",
+      "5️⃣",
+      "6️⃣",
+      "7️⃣",
+      "8️⃣",
+      "9️⃣",
+      "🔟",
+    ];
+
+    jobs.forEach((job, index) => {
+      const num = NUMBER_EMOJIS[index] || `${index + 1}️⃣`;
+      const locClean = this.cleanLocation(job.location);
+      const model = this.formatWorkModel(job.workModel);
+
+      const metaParts: string[] = [];
+      if (job.company) metaParts.push(`🏢 ${job.company}`);
+      if (locClean && locClean.toLowerCase() !== "remoto")
+        metaParts.push(`📍 ${locClean}`);
+      if (model) metaParts.push(model);
+
+      const metaLine = metaParts.length > 0 ? metaParts.join(" • ") : "";
+
+      lines.push(`${num} *${job.title}*`);
+      if (metaLine) {
+        lines.push(metaLine);
+      }
+      lines.push(`🔗 ${job.url}`);
+      lines.push(``);
+    });
+
+    const sources = Array.from(
+      new Set(jobs.map((j) => j.source).filter(Boolean)),
+    ).join(", ");
+    lines.push(`🤖 _S-Job-Crawler • Coletado via ${sources || "Web"}_`);
+
+    return lines.join("\n");
+  }
+
+  private static formatWorkModel(model?: string): string {
+    if (!model) return "";
+    const upper = model.toUpperCase();
+    if (upper === "REMOTO") return "Remoto";
+    if (upper === "HIBRIDO" || upper === "HÍBRIDO") return "Híbrido";
+    if (upper === "PRESENCIAL") return "Presencial";
+    return model;
+  }
+
+  private static cleanLocation(loc?: string): string {
+    if (!loc) return "";
+    return loc.replace(/,\s*BR$/i, "").replace(/,\s*Brasil$/i, "").trim();
   }
 
   private static formatSingleJobMessage(job: Job): string {
