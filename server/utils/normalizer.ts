@@ -44,13 +44,40 @@ const KNOWN_STACKS = [
   "Kafka",
 ];
 
+export function canonicalizeTitle(title: string): string {
+  if (!title) return "";
+  let clean = title
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+  // 1. Remove tags de colchetes ou parênteses de IDs/código interno (ex: [1201-1202], (Req 402))
+  clean = clean.replace(/\[\s*[\d\-a-z]+\s*\]/gi, " ");
+  clean = clean.replace(/req\s*#?\s*\d+/gi, " ");
+
+  // 2. Remove tags afirmativas/diversidade comuns
+  clean = clean.replace(
+    /\(?\[?\b(afirmativ[ao]|exclusiv[ao]|pcd|mulheres|diversidade|negros?|lgbtqia\+?)\b[^\]\)]*\]?\)?/gi,
+    " ",
+  );
+
+  // 3. Remove modelo de trabalho e localidades comuns
+  clean = clean.replace(
+    /\(?\[?\b(remoto|hibrido|presencial|home\s*office|brasil|brazil|sp|rj|mg|pr|sc|rs|campinas|sao paulo|rio de janeiro)\b\]?\)?/gi,
+    " ",
+  );
+
+  // 4. Remove pontuação e caracteres especiais, mantendo apenas letras, números e espaços
+  clean = clean.replace(/[^a-z0-9\s]/g, " ");
+  return clean.replace(/\s+/g, " ").trim();
+}
+
 export function detectSeniority(text: string): SeniorityLevel {
   const t = text.toLowerCase();
+  // Regex estrita com word boundary para estágio e exclusão de "internal" ou "international"
   if (
-    t.includes("estágio") ||
-    t.includes("estagio") ||
-    t.includes("estagiário") ||
-    t.includes("intern")
+    /\b(est[aá]gio|estagi[aá]ri[ao]|intern|internship|trainee)\b/i.test(t) &&
+    !/\b(internal|international)\b/i.test(t)
   ) {
     return "ESTAGIO";
   }

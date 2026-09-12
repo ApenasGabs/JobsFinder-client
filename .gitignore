@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Data backups
+data/jobs.backup.*.json
+data/*.tmp

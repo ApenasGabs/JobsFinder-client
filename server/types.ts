@@ -25,6 +25,7 @@ export interface Job {
   scrapedAt: string;
   description?: string;
   notifiedAt?: string | null; // Data/hora em que a vaga foi enviada ao WhatsApp
+  isTech?: boolean;
 }
 
 export interface ScrapeOptions {

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { ContractType, Job, SeniorityLevel, WorkModel } from "../types.js";
+import { TechClassifierService } from "./classifier.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -78,9 +79,23 @@ export class StorageService {
     );
     const existing = this.jobsMap.get(id);
 
+    const isTech =
+      jobData.isTech !== undefined
+        ? jobData.isTech
+        : TechClassifierService.isTechSync(jobData.title);
+
+    if (!isTech) {
+      // Descarta vagas comprovadamente fora da área de Tecnologia/TI
+      return {
+        job: { ...jobData, id, isTech: false } as Job,
+        isNew: false,
+      };
+    }
+
     const job: Job = {
       ...jobData,
       id,
+      isTech: true,
       scrapedAt: existing ? existing.scrapedAt : new Date().toISOString(),
       notifiedAt: existing?.notifiedAt ?? null,
     };
@@ -92,6 +107,94 @@ export class StorageService {
     this.scheduleSave();
 
     return { job, isNew };
+  }
+
+  public static deleteJob(jobId: string): boolean {
+    this.initialize();
+    const deleted = this.jobsMap.delete(jobId);
+    if (deleted) {
+      this.scheduleSave();
+    }
+    return deleted;
+  }
+
+  public static updateJobTechStatus(
+    jobId: string,
+    isTech: boolean,
+  ): { success: boolean; job?: Job } {
+    this.initialize();
+    const job = this.jobsMap.get(jobId);
+    if (!job) return { success: false };
+
+    job.isTech = isTech;
+    TechClassifierService.recordUserFeedback(job.title, isTech);
+
+    if (!isTech) {
+      // Se o usuário marcou como Não-TI, remove do banco ativo
+      this.jobsMap.delete(jobId);
+    }
+
+    this.scheduleSave();
+    return { success: true, job };
+  }
+
+  public static purgeNonTechJobs(): {
+    purgedCount: number;
+    remainingCount: number;
+    purgedTitles: string[];
+    backupFile?: string;
+  } {
+    this.initialize();
+
+    let backupFile: string | undefined;
+    try {
+      backupFile = path.join(DATA_DIR, `jobs.backup.${Date.now()}.json`);
+      fs.writeFileSync(
+        backupFile,
+        JSON.stringify(Array.from(this.jobsMap.values()), null, 2),
+        "utf-8",
+      );
+      console.log(
+        `[Storage] 🛡️ Backup prévio criado com sucesso em: ${backupFile}`,
+      );
+    } catch (err) {
+      console.error("[Storage] Aviso ao criar backup prévio do purge:", err);
+    }
+
+    const purgedTitles: string[] = [];
+    for (const [id, job] of this.jobsMap.entries()) {
+      const isTech = TechClassifierService.isTechSync(job.title);
+      if (!isTech) {
+        purgedTitles.push(`${job.title} @ ${job.company}`);
+        this.jobsMap.delete(id);
+      } else {
+        job.isTech = true;
+      }
+    }
+
+    this.saveToDiskSync();
+    console.log(
+      `[Storage] 🧹 Purge concluído: ${purgedTitles.length} vagas não-tech removidas. Restam ${this.jobsMap.size} vagas ativas de TI.`,
+    );
+
+    return {
+      purgedCount: purgedTitles.length,
+      remainingCount: this.jobsMap.size,
+      purgedTitles: purgedTitles.slice(0, 50),
+      backupFile,
+    };
+  }
+
+  public static saveToDiskSync(): void {
+    try {
+      const list = Array.from(this.jobsMap.values());
+      fs.writeFileSync(DATA_FILE, JSON.stringify(list, null, 2), "utf-8");
+    } catch (err) {
+      console.error(
+        "[Storage] Erro ao gravar dados em disco sincronicamente:",
+        err,
+      );
+    }
   }
 
   public static markAsNotified(jobId: string): void {
@@ -148,6 +251,11 @@ export class StorageService {
     if (unnotifiedOnly) {
       jobs = jobs.filter((j) => !j.notifiedAt);
     }
+
+    // Trava de segurança: garante que apenas vagas de TI sejam retornadas
+    jobs = jobs.filter(
+      (j) => j.isTech !== false && TechClassifierService.isTechSync(j.title),
+    );
 
     if (category && category !== "TODAS" && category !== "ALL") {
       const catUpper = category.toUpperCase().trim();
@@ -207,6 +315,7 @@ export class StorageService {
     seniority?: SeniorityLevel;
     contractType?: ContractType;
     notified?: "ALL" | "PENDING" | "NOTIFIED" | string;
+    onlyTech?: boolean;
     page?: number;
     pageSize?: number;
   }): { jobs: Job[]; total: number; page: number; pageSize: number } {
@@ -215,8 +324,22 @@ export class StorageService {
     let all = Array.from(this.jobsMap.values());
 
     if (filters) {
-      const { search, source, workModel, seniority, contractType, notified } =
-        filters;
+      const {
+        search,
+        source,
+        workModel,
+        seniority,
+        contractType,
+        notified,
+        onlyTech,
+      } = filters;
+
+      if (onlyTech) {
+        all = all.filter(
+          (j) =>
+            j.isTech !== false && TechClassifierService.isTechSync(j.title),
+        );
+      }
 
       if (search && search.trim()) {
         const q = search.toLowerCase().trim();

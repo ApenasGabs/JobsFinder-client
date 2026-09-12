@@ -10,6 +10,7 @@ import { ProgramathorScraper } from "../scrapers/programathor.js";
 import { RemoteOKScraper } from "../scrapers/remoteok.js";
 import { WorkableScraper } from "../scrapers/workable.js";
 import { Job, ScrapeOptions, ScrapeProgressEvent } from "../types.js";
+import { TechClassifierService } from "./classifier.js";
 import { StorageService } from "./storage.js";
 
 export class CrawlerService {
@@ -99,6 +100,14 @@ export class CrawlerService {
           const jobs = await scraper.scrape(
             options,
             (newJob) => {
+              // Descarta vagas que não sejam de Tecnologia/TI
+              if (
+                newJob.isTech === false ||
+                !TechClassifierService.isTechSync(newJob.title)
+              ) {
+                return;
+              }
+              newJob.isTech = true;
               collectedJobs.push(newJob);
               onProgress({
                 type: "job",

@@ -122,6 +122,9 @@ export default function App() {
   const [contractFilter, setContractFilter] = useState('ALL');
   const [sourceFilter, setSourceFilter] = useState('ALL');
   const [notifiedFilter, setNotifiedFilter] = useState<'ALL' | 'PENDING' | 'NOTIFIED'>('ALL');
+  const [onlyTechFilter, setOnlyTechFilter] = useState(true);
+  const [isPurging, setIsPurging] = useState(false);
+  const [purgeResultMsg, setPurgeResultMsg] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
@@ -205,6 +208,7 @@ export default function App() {
     model = modelFilter,
     contract = contractFilter,
     notified = notifiedFilter,
+    onlyTech = onlyTechFilter,
     page = currentPage,
     size = pageSize
   ) => {
@@ -215,6 +219,7 @@ export default function App() {
       if (model && model !== 'ALL') params.append('workModel', model);
       if (contract && contract !== 'ALL') params.append('contractType', contract);
       if (notified && notified !== 'ALL') params.append('notified', notified);
+      if (onlyTech) params.append('onlyTech', 'true');
       params.append('page', String(page));
       params.append('pageSize', String(size));
 
@@ -230,8 +235,8 @@ export default function App() {
   };
 
   useEffect(() => {
-    loadJobs(sourceFilter, searchFilter, modelFilter, contractFilter, notifiedFilter, currentPage, pageSize);
-  }, [sourceFilter, searchFilter, modelFilter, contractFilter, notifiedFilter, currentPage, pageSize]);
+    loadJobs(sourceFilter, searchFilter, modelFilter, contractFilter, notifiedFilter, onlyTechFilter, currentPage, pageSize);
+  }, [sourceFilter, searchFilter, modelFilter, contractFilter, notifiedFilter, onlyTechFilter, currentPage, pageSize]);
 
   const loadStats = async () => {
     try {
@@ -366,6 +371,53 @@ export default function App() {
       }
     } catch {
       await loadJobs();
+    }
+  };
+
+  const handlePurgeNonTech = async () => {
+    if (
+      !window.confirm(
+        "Deseja executar o expurgo de vagas não-tech? O sistema criará um backup de segurança e removerá todas as vagas que não forem de TI do banco ativo."
+      )
+    ) {
+      return;
+    }
+    setIsPurging(true);
+    setPurgeResultMsg(null);
+    try {
+      const res = await fetch('/api/jobs/purge-non-tech', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        setPurgeResultMsg(`🧹 Expurgadas ${data.purgedCount} vagas fora de TI! Restam ${data.remainingCount} vagas ativas.`);
+        loadJobs();
+        loadStats();
+      } else {
+        alert("Erro ao executar expurgo.");
+      }
+    } catch (err: any) {
+      alert("Falha na requisição: " + (err?.message || err));
+    } finally {
+      setIsPurging(false);
+    }
+  };
+
+  const handleMarkNotTech = async (job: Job) => {
+    if (!window.confirm(`Tem certeza que deseja marcar "${job.title}" como NÃO-TI? Ela será removida da lista e o classificador aprenderá a decisão.`)) {
+      return;
+    }
+    try {
+      const res = await fetch('/api/classifier/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jobId: job.id, title: job.title, isTech: false })
+      });
+      if (res.ok) {
+        setJobs((prev) => prev.filter((j) => j.id !== job.id));
+        setTotalJobs((prev) => Math.max(0, prev - 1));
+        loadStats();
+      }
+    } catch (err) {
+      console.error('Erro ao registrar feedback não-tech:', err);
     }
   };
 
@@ -1018,7 +1070,85 @@ export default function App() {
           <option value="PENDING">⚪ Apenas Pendentes</option>
           <option value="NOTIFIED">🟢 Apenas Enviadas</option>
         </select>
+
+        {/* Toggle Somente TI */}
+        <label
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.45rem',
+            fontSize: '0.82rem',
+            color: onlyTechFilter ? '#34d399' : '#94a3b8',
+            cursor: 'pointer',
+            background: onlyTechFilter ? 'rgba(16, 185, 129, 0.12)' : 'rgba(255, 255, 255, 0.04)',
+            border: `1px solid ${onlyTechFilter ? 'rgba(16, 185, 129, 0.35)' : 'rgba(255, 255, 255, 0.1)'}`,
+            borderRadius: '8px',
+            padding: '0.45rem 0.75rem',
+            userSelect: 'none'
+          }}
+          title="Exibe somente vagas validadas como Tecnologia/TI"
+        >
+          <input
+            type="checkbox"
+            checked={onlyTechFilter}
+            onChange={(e) => {
+              setOnlyTechFilter(e.target.checked);
+              setCurrentPage(1);
+            }}
+            style={{ accentColor: '#10b981', cursor: 'pointer' }}
+          />
+          Somente TI
+        </label>
+
+        {/* Botão de Expurgo de Não-TI */}
+        <button
+          type="button"
+          onClick={handlePurgeNonTech}
+          disabled={isPurging}
+          className="btn-action"
+          style={{
+            padding: '0.45rem 0.85rem',
+            fontSize: '0.82rem',
+            background: 'rgba(239, 68, 68, 0.12)',
+            borderColor: 'rgba(239, 68, 68, 0.35)',
+            color: '#fca5a5',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            cursor: isPurging ? 'not-allowed' : 'pointer'
+          }}
+          title="Executa expurgo e backup de vagas fora de Tecnologia"
+        >
+          {isPurging ? <RefreshCw size={14} className="spin" /> : <Trash2 size={14} />}
+          {isPurging ? 'Limpando...' : 'Expurgar Não-TI'}
+        </button>
       </div>
+
+      {purgeResultMsg && (
+        <div
+          style={{
+            margin: '0.75rem 0',
+            padding: '0.75rem 1rem',
+            borderRadius: '8px',
+            background: 'rgba(16, 185, 129, 0.12)',
+            border: '1px solid rgba(16, 185, 129, 0.35)',
+            color: '#34d399',
+            fontSize: '0.88rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <span>{purgeResultMsg}</span>
+          <button
+            type="button"
+            onClick={() => setPurgeResultMsg(null)}
+            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Grid de Vagas */}
       {filteredJobs.length === 0 ? (
@@ -1130,6 +1260,27 @@ export default function App() {
                       <CheckCircle2 size={13} /> Marcar Enviada
                     </>
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleMarkNotTech(job)}
+                  className="btn-action"
+                  style={{
+                    flex: '0 0 auto',
+                    padding: '0.5rem 0.65rem',
+                    fontSize: '0.78rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    borderColor: 'rgba(239, 68, 68, 0.3)',
+                    color: '#f87171',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    cursor: 'pointer'
+                  }}
+                  title="Marcar como Não-TI (Remove da lista e ensina o classificador)"
+                >
+                  <Trash2 size={13} /> Não-TI
                 </button>
 
                 <a

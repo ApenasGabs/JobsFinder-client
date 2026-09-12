@@ -11,6 +11,7 @@ import qrcode from "qrcode";
 import { fileURLToPath } from "url";
 import { ConfigService } from "../services/config.js";
 import { StorageService } from "../services/storage.js";
+import { TechClassifierService } from "../services/classifier.js";
 import { Job, WhatsAppStatus } from "../types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -291,18 +292,26 @@ export class WhatsAppBot {
             });
           });
 
-    if (filteredJobs.length === 0) return;
+    const techOnlyJobs = filteredJobs.filter(
+      (j) => j.isTech !== false && TechClassifierService.isTechSync(j.title),
+    );
 
-    this.enqueueJobs(filteredJobs);
+    if (techOnlyJobs.length === 0) return;
+
+    this.enqueueJobs(techOnlyJobs);
   }
 
   /**
-   * Adiciona vagas à fila sem duplicar
+   * Adiciona vagas à fila sem duplicar e garantindo que sejam 100% de Tecnologia/TI
    */
   public static enqueueJobs(jobs: Job[]): number {
     const existingIds = new Set(this.messageQueue.map((j) => j.id));
     let addedCount = 0;
     for (const job of jobs) {
+      // Trava de segurança WhatsApp: descarta imediatamente se não for confirmada como TI
+      if (job.isTech === false || !TechClassifierService.isTechSync(job.title)) {
+        continue;
+      }
       if (!existingIds.has(job.id)) {
         this.messageQueue.push(job);
         existingIds.add(job.id);

@@ -10,6 +10,7 @@ import { ConfigService } from "./services/config.js";
 import { CrawlerService } from "./services/crawler.js";
 import { SchedulerService } from "./services/scheduler.js";
 import { StorageService } from "./services/storage.js";
+import { TechClassifierService } from "./services/classifier.js";
 import {
   ContractType,
   ScrapeOptions,
@@ -117,6 +118,7 @@ app.get("/api/jobs", (req: Request, res: Response) => {
       ? (String(contractType) as ContractType)
       : undefined,
     notified: notified ? String(notified) : undefined,
+    onlyTech: onlyTech === "true" || onlyTech === "1",
     page: page ? parseInt(String(page), 10) : 1,
     pageSize: pageSize ? parseInt(String(pageSize), 10) : 50,
   });
@@ -145,6 +147,42 @@ app.patch("/api/jobs/:id/notified", (req: Request, res: Response) => {
     return res.status(404).json({ error: "Vaga não encontrada" });
   }
   res.json({ success: true, job });
+});
+
+// Excluir vaga individual
+app.delete("/api/jobs/:id", (req: Request, res: Response) => {
+  const deleted = StorageService.deleteJob(req.params.id);
+  res.json({ success: deleted });
+});
+
+// Expurgo em massa de vagas não-tech
+app.post("/api/jobs/purge-non-tech", (_req: Request, res: Response) => {
+  const result = StorageService.purgeNonTechJobs();
+  res.json({ success: true, ...result });
+});
+
+// Curadoria humana de vagas (Feedback do usuário - USER priority)
+app.post("/api/classifier/feedback", (req: Request, res: Response) => {
+  const { jobId, title, isTech } = req.body;
+  if (!title && !jobId) {
+    return res.status(400).json({ error: "title ou jobId é obrigatório." });
+  }
+
+  if (jobId) {
+    const result = StorageService.updateJobTechStatus(jobId, !!isTech);
+    return res.json(result);
+  }
+
+  const feedback = TechClassifierService.recordUserFeedback(
+    String(title),
+    !!isTech,
+  );
+  res.json({ success: true, feedback });
+});
+
+// Estatísticas do classificador de tecnologia
+app.get("/api/classifier/stats", (_req: Request, res: Response) => {
+  res.json(TechClassifierService.getStats());
 });
 
 // 5. Limpeza de Vagas
