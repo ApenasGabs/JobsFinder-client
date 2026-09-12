@@ -105,6 +105,7 @@ app.get("/api/jobs", (req: Request, res: Response) => {
     seniority,
     contractType,
     notified,
+    onlyTech,
     page,
     pageSize,
   } = req.query;
@@ -118,7 +119,7 @@ app.get("/api/jobs", (req: Request, res: Response) => {
       ? (String(contractType) as ContractType)
       : undefined,
     notified: notified ? String(notified) : undefined,
-    onlyTech: onlyTech === "true" || onlyTech === "1",
+    onlyTech: onlyTech !== undefined ? (onlyTech === "true" || onlyTech === "1") : false,
     page: page ? parseInt(String(page), 10) : 1,
     pageSize: pageSize ? parseInt(String(pageSize), 10) : 50,
   });
