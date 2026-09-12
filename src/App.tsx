@@ -20,7 +20,7 @@ import {
   Trash2,
   X
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface Job {
   id: string;
@@ -100,6 +100,7 @@ export default function App() {
   });
   const [groups, setGroups] = useState<Array<{ id: string; subject: string; participants: number }>>([]);
   const [selectedGroupJid, setSelectedGroupJid] = useState('');
+  const [groupSearch, setGroupSearch] = useState('');
   const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [groupSaveMsg, setGroupSaveMsg] = useState<string | null>(null);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
@@ -283,6 +284,25 @@ export default function App() {
       setIsLoadingGroups(false);
     }
   };
+
+  const filteredGroups = useMemo(() => {
+    const normalize = (str: string) =>
+      str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+    let list = [...groups];
+    if (groupSearch.trim()) {
+      const term = normalize(groupSearch.trim());
+      list = list.filter((g) => normalize(g.subject || '').includes(term));
+    }
+    // Ordenação alfabética em português (A-Z) para fácil localização
+    list.sort((a, b) =>
+      (a.subject || '').localeCompare(b.subject || '', 'pt-BR', { sensitivity: 'base' })
+    );
+    return list;
+  }, [groups, groupSearch]);
 
   const handleSaveGroup = async () => {
     if (!selectedGroupJid) return;
@@ -686,6 +706,109 @@ export default function App() {
               </button>
             </div>
 
+            {/* Campo de Pesquisa de Grupo em Tempo Real */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search
+                  size={15}
+                  style={{
+                    position: 'absolute',
+                    left: '12px',
+                    color: '#94a3b8',
+                    pointerEvents: 'none'
+                  }}
+                />
+                <input
+                  type="text"
+                  placeholder="🔎 Pesquisar grupo por nome... (ex: ESTÁGIO, VAGAS, TI)"
+                  value={groupSearch}
+                  onChange={(e) => setGroupSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem 2.2rem 0.5rem 2.4rem',
+                    borderRadius: '8px',
+                    background: '#020617',
+                    border: '1px solid #334155',
+                    color: '#f8fafc',
+                    fontSize: '0.85rem'
+                  }}
+                />
+                {groupSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setGroupSearch('')}
+                    style={{
+                      position: 'absolute',
+                      right: '10px',
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '2px'
+                    }}
+                    title="Limpar filtro de grupo"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {groupSearch.trim() && (
+                <div
+                  style={{
+                    marginTop: '0.4rem',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: '0.75rem',
+                    color: '#94a3b8'
+                  }}
+                >
+                  <span>
+                    Encontrados <strong style={{ color: '#38bdf8' }}>{filteredGroups.length}</strong> de {groups.length} grupos
+                  </span>
+                  {filteredGroups.length === 0 && (
+                    <span style={{ color: '#f87171' }}>Nenhum grupo encontrado com esse nome.</span>
+                  )}
+                </div>
+              )}
+
+              {/* Atalhos rápidos de clique quando houver resultados filtrados (até 8) */}
+              {groupSearch.trim() && filteredGroups.length > 0 && filteredGroups.length <= 8 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.45rem' }}>
+                  {filteredGroups.map((g) => {
+                    const isSelected = selectedGroupJid === g.id;
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setSelectedGroupJid(g.id)}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          background: isSelected ? 'rgba(16, 185, 129, 0.25)' : '#1e293b',
+                          color: isSelected ? '#34d399' : '#38bdf8',
+                          border: isSelected ? '1px solid #10b981' : '1px solid #334155',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{ fontWeight: isSelected ? 600 : 400 }}>{g.subject}</span>
+                        <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({g.participants} membros)</span>
+                        {isSelected && <span style={{ fontWeight: 'bold' }}>✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
               <select
                 className="select-filter"
@@ -693,13 +816,25 @@ export default function App() {
                 onChange={(e) => setSelectedGroupJid(e.target.value)}
                 style={{ minWidth: '260px', flex: 1 }}
               >
-                <option value="">Selecione o grupo que receberá as vagas...</option>
-                {waStatus.targetGroupJid && !groups.some((g) => g.id === waStatus.targetGroupJid) && (
-                  <option value={waStatus.targetGroupJid}>
-                    {waStatus.targetGroupName || 'Grupo Atual'} (Salvo no Servidor)
-                  </option>
-                )}
-                {groups.map((g) => (
+                <option value="">
+                  {groupSearch.trim()
+                    ? `-- ${filteredGroups.length} grupo(s) filtrado(s) --`
+                    : `-- Selecione o grupo que receberá as vagas (${groups.length} disponíveis) --`}
+                </option>
+                {waStatus.targetGroupJid &&
+                  !filteredGroups.some((g) => g.id === waStatus.targetGroupJid) && (
+                    <option value={waStatus.targetGroupJid}>
+                      {waStatus.targetGroupName || 'Grupo Atual'} (Salvo no Servidor)
+                    </option>
+                  )}
+                {selectedGroupJid &&
+                  selectedGroupJid !== waStatus.targetGroupJid &&
+                  !filteredGroups.some((g) => g.id === selectedGroupJid) && (
+                    <option value={selectedGroupJid}>
+                      {groups.find((g) => g.id === selectedGroupJid)?.subject || 'Grupo Selecionado'}
+                    </option>
+                  )}
+                {filteredGroups.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.subject} ({g.participants} membros)
                   </option>
@@ -725,6 +860,16 @@ export default function App() {
                 <Send size={14} /> {testSending ? 'Enviando...' : 'Testar Envio'}
               </button>
             </div>
+
+            {selectedGroupJid && selectedGroupJid !== waStatus.targetGroupJid && (
+              <div style={{ marginTop: '0.6rem', fontSize: '0.8rem', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(245, 158, 11, 0.1)', padding: '0.4rem 0.75rem', borderRadius: '6px', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                <span>⚠️ Selecionado:</span>
+                <strong style={{ color: '#f8fafc' }}>
+                  {groups.find((g) => g.id === selectedGroupJid)?.subject || selectedGroupJid}
+                </strong>
+                <span style={{ color: '#94a3b8' }}>— clique em "Salvar Grupo" para confirmar.</span>
+              </div>
+            )}
 
             {groupSaveMsg && (
               <div style={{ marginTop: '0.8rem', padding: '0.5rem 0.8rem', borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid #10b981', fontSize: '0.8rem', color: '#6ee7b7' }}>
