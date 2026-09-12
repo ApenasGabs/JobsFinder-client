@@ -91,7 +91,7 @@ S-Job-Crawler/
 - 47 testes unitários implementados em `tests/` cobrindo scrapers, normalizadores, slugger e formatação de mensagens do WhatsApp.
 
 ### 5. Implantação Contínua no ZimaOS
-- O sistema roda em container Docker (`s-job-crawler`) no servidor doméstico **`gabisa`** (`192.168.31.60:3001`).
+- O sistema roda em container Docker (`s-job-crawler`) no servidor doméstico **`gabisa`** (`http://gabisa.local:3001`).
 
 ---
 
@@ -202,11 +202,12 @@ Na interface web:
 
 ### 📍 Passo 6 (Opcional Avançado): Classificação Inteligente via IA Local (`servidor`)
 
-Conforme detalhado no [`SERVER_CONTEXT.md`](file:///home/gabs/projetos/busca-vagas/SERVER_CONTEXT.md), temos o servidor **`servidor`** (`192.168.31.2`) equipado com uma GPU NVIDIA GTX 1050 Ti e instâncias do Ollama ativas:
+Conforme detalhado no [`SERVER_CONTEXT.md`](file:///home/gabs/projetos/busca-vagas/SERVER_CONTEXT.md), temos o servidor **`servidor`** (`http://servidor.local:11434`) equipado com uma GPU NVIDIA GTX 1050 Ti e instâncias do Ollama ativas:
 - Modelos recomendados para classificação instantânea:
   - **`llama3.2:1b`** (processa a ~44 tokens/segundo).
   - **`qwen2.5:1.5b`** (processa a ~38 tokens/segundo).
-- Pode ser criado um micro-serviço ou chamada simples via `fetch('http://192.168.31.2:11434/api/generate', ...)` para classificar títulos que fiquem no limiar de dúvida (ex: títulos curtos como *"Especialista de Operações"* ou *"Analista Jr"* sem stack evidente).
+  - **`llama3.2:3b`** (máxima assertividade com 100% de acertos).
+- Pode ser criado um micro-serviço ou chamada simples via `fetch('http://servidor.local:11434/api/generate', ...)` para classificar títulos que fiquem no limiar de dúvida (ex: títulos curtos como *"Especialista de Operações"* ou *"Analista Jr"* sem stack evidente).
 
 ---
 
@@ -242,13 +243,13 @@ ssh gabisa "docker exec s-job-crawler sh -c 'cd /app && rm -f .git/index.lock &&
 ### 4. Checagem de Saúde Pós-Deploy
 ```bash
 # Health check da API
-curl -s http://192.168.31.60:3001/api/health
+curl -s http://gabisa.local:3001/api/health
 
 # Status do WhatsApp
-curl -s http://192.168.31.60:3001/api/whatsapp/status
+curl -s http://gabisa.local:3001/api/whatsapp/status
 
 # Estatísticas do banco de vagas
-curl -s http://192.168.31.60:3001/api/stats
+curl -s http://gabisa.local:3001/api/stats
 ```
 
 ---
@@ -264,3 +265,4 @@ curl -s http://192.168.31.60:3001/api/stats
 | [`server/bot/whatsapp.ts`](file:///home/gabs/projetos/busca-vagas/S-Job-Crawler/server/bot/whatsapp.ts) | Trava obrigatória de tecnologia para impedir envios não-tech no grupo de WhatsApp |
 | [`src/App.tsx`](file:///home/gabs/projetos/busca-vagas/S-Job-Crawler/src/App.tsx) | Interface gráfica com filtros, botões de ação e gerenciamento das vagas |
 | [`config/search.config.json`](file:///home/gabs/projetos/busca-vagas/S-Job-Crawler/config/search.config.json) | Empresas mapeadas e termos de busca |
+

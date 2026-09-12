@@ -1,9 +1,10 @@
 # 🧠 Plano de Arquitetura: Classificador de Vagas Tech com Aprendizado Ativo & IA Local (Active Learning Cache)
 
-> **Documento de Especificação Técnica & Contexto Futuro**  
+> **Documento de Especificação Técnica, Análise Crítica e Salvaguardas**  
 > **Data:** 12 de Setembro de 2026  
 > **Repositório:** `busca-vagas / S-Job-Crawler`  
-> **Arquivos Relacionados:** [`SERVER_CONTEXT.md`](file:///home/gabs/projetos/busca-vagas/SERVER_CONTEXT.md), [`PROJECT_CONTEXT.md`](file:///home/gabs/projetos/busca-vagas/PROJECT_CONTEXT.md)
+> **Arquivos Relacionados:** [`SERVER_CONTEXT.md`](file:///home/gabs/projetos/busca-vagas/SERVER_CONTEXT.md), [`PROJECT_CONTEXT.md`](file:///home/gabs/projetos/busca-vagas/PROJECT_CONTEXT.md)  
+> **Hosts e Aliases Autorizados:** `gabisa` (Servidor Doméstico / Docker Host) e `servidor` (Servidor de IA / GPU Local)
 
 ---
 
@@ -11,50 +12,51 @@
 
 O **S-Job-Crawler** tem como objetivo fornecer vagas **exclusivamente de Tecnologia da Informação (TI, Software, Dados, Produto e Design Tech)** para uma comunidade de ~300 desenvolvedores no WhatsApp e através de um Dashboard Web.
 
-Entretanto, uma auditoria recente no banco de dados (`data/jobs.json`) revelou mais de **110 vagas totalmente fora da área de tecnologia** (como *Monitor de Estágio – Enfermagem*, *Analista Comercial Júnior*, *Executivo de Vendas Pleno*, *Auxiliar de Atendimento*, *Advogado Júnior* e *Engenheiro de Segurança Ocupacional*).
+Entretanto, uma auditoria no banco de dados (`data/jobs.json`) revelou mais de **110 vagas totalmente fora da área de tecnologia** (como *Monitor de Estágio – Enfermagem*, *Analista Comercial Júnior*, *Executivo de Vendas Pleno*, *Auxiliar de Atendimento*, *Advogado Júnior* e *Engenheiro de Segurança Ocupacional*).
 
 ### Causas Raízes Identificadas:
 1. **Empresas Multissetoriais**: Portais de empresas cadastradas no ATS (como Cogna, Unimed, Cacau Show, Localiza, DB1 Group, ABT Atividades) publicam vagas para todos os departamentos da organização (Saúde, Vendas, Jurídico, RH, Financeiro).
 2. **Termos de Busca Genéricos**: Palavras-chave como `estagio`, `junior`, `pleno` e `senior` capturam qualquer vaga corporativa contendo essas palavras, independentemente do cargo.
-3. **Falsos Positivos de Regex**: A palavra inglesa `intern` (estágio) dá match substring na palavra `internal` (ex: *Software Engineer - Internal Tooling* classificado erroneamente como estágio).
+3. **Falsos Positivos de Regex**: A palavra inglesa `intern` (estágio) dava match substring na palavra `internal` (ex: *Software Engineer - Internal Tooling* classificado erroneamente como estágio).
 4. **Falta de um Filtro Especializado**: Não havia nenhuma camada de validação semântica entre a coleta dos scrapers e a persistência no banco.
 
 ---
 
 ## 2. 💡 A Solução: Classificador Híbrido com Aprendizado Ativo (Active Learning Cache)
 
-Em vez de depender puramente de regex estática (que falha em casos ambíguos) ou chamar uma IA para cada uma das milhares de vagas (o que seria lento e sobrecarregaria a GPU sem necessidade), a solução ideal é uma **Arquitetura de 4 Camadas com Aprendizado Ativo**:
+Em vez de depender puramente de regex estática (que falha em casos ambíguos) ou chamar uma IA para cada uma das milhares de vagas (o que seria lento e sobrecarregaria a GPU sem necessidade), a solução é uma **Arquitetura em Camadas com Aprendizado Ativo e Cache em RAM**:
 
 ```mermaid
 flowchart TD
-    A["Nova Vaga Ingerida pelo Scraper"] --> B{"Camada 1: Dicionário em RAM? (tech_dictionary.json)"}
+    A["Nova Vaga Ingerida pelo Scraper"] --> B["Higienização Canônica do Título (canonicalizeTitle)"]
+    B --> C{"Camada 1: Dicionário em RAM? (tech_dictionary.json)"}
     
-    B -- "Match Exato ou Keyword de Alta Confiança" --> C["Classificação Instantânea (0.001ms) - Sem GPU"]
+    C -- "Match Exato ou Keyword de Alta Confiança" --> D["Classificação Instantânea (< 0.001ms) - Sem GPU"]
     
-    B -- "Título Inédito ou Ambíguo" --> D["Camada 2: Buffer de Lote (10 a 20 vagas)"]
-    D --> E["Camada 3: Chamada Batch ao Ollama no 'servidor' (192.168.31.2)"]
-    E --> F["llama3.2:3b processa em bloco (~1.2s para 20 vagas)"]
+    C -- "Título Inédito ou Ambíguo" --> E["Camada 2: Buffer de Lote (Batch de 10 a 20 vagas)"]
+    E --> F["Camada 3: Chamada Batch ao Ollama no host 'servidor'"]
+    F --> G["llama3.2:3b processa em bloco (~1.2s para 20 vagas)"]
     
-    F --> G["Popula Dicionário em RAM + Salva em Disco"]
-    G --> H["Vaga Classificada e Salva (ou Descartada se Não-TI)"]
+    G --> H["Popula Dicionário em RAM + Escrita Atômica em Disco"]
+    H --> I["Vaga Classificada e Salva (ou Descartada se Não-TI)"]
     
-    I["Dashboard Web (Usuário)"] --> J["Camada 4: Botão 'Não é TI' / 'É TI'"]
-    J --> G
+    J["Dashboard Web (Usuário)"] --> K["Camada 4: Botão 'Não é TI' / 'É TI' (Curadoria Manual)"]
+    K --> H
 ```
 
-### 🏎️ Por que essa arquitetura é imbatível?
+### 🏎️ Por que essa arquitetura é superior?
 1. **Memória RAM vs VRAM da GPU**:
-   - A GPU GTX 1050 Ti tem largura de banda de **112 GB/s** (ideal para inferência do modelo `llama3.2:3b`).
+   - A GPU GTX 1050 Ti no host `servidor` tem largura de banda de **112 GB/s** (ideal para inferência do modelo `llama3.2:3b`).
    - A RAM DDR4 do sistema roda a **~30 GB/s** (ideal para consultas em nano-segundos de tabelas hash).
-   - Ao manter o dicionário na RAM e o modelo na VRAM, unimos o melhor dos dois mundos.
+   - Ao manter o dicionário na RAM e o modelo na VRAM, unimos velocidade extrema com inteligência semântica.
 2. **Auto-Treinamento (O Algoritmo Fica Mais Rápido a Cada Dia)**:
    - Toda vaga que a IA analisa é imediatamente gravada no dicionário em memória e persistida em disco.
-   - **Próxima vez que essa vaga aparecer?** Tempo de resposta = **0.001 ms**, sem custo de GPU.
-   - Com o tempo, a taxa de acerto em cache (Hit Rate) ultrapassa **98%**, tornando a IA necessária apenas para títulos raros ou completamente novos.
+   - **Próxima vez que essa vaga aparecer?** Tempo de resposta = **0.001 ms**, sem custo de GPU ou rede.
+   - Com o tempo, a taxa de acerto em cache (Hit Rate) ultrapassa **98%**, tornando a IA necessária apenas para títulos raros ou completamente inéditos.
 
 ---
 
-## 3. 🧪 Benchmark Real Realizado no Servidor de IA (`servidor` - 192.168.31.2)
+## 3. 🧪 Benchmark Real Realizado no Servidor de IA (`servidor`)
 
 Foi realizado um teste real na GPU NVIDIA GTX 1050 Ti rodando `llama3.2:3b` via Ollama com vagas extraídas da nossa base:
 
@@ -74,90 +76,101 @@ Foi realizado um teste real na GPU NVIDIA GTX 1050 Ti rodando `llama3.2:3b` via 
 
 ---
 
-## 4. 📐 Especificação Técnica dos Módulos a Implementar
+## 4. ⚠️ Análise Crítica: Lacunas Identificadas & Salvaguardas Obrigatórias
 
-### Módulo 1: O Dicionário Persistente (`data/tech_dictionary.json`)
-Armazena as decisões conhecidas para consulta instantânea:
-```json
-{
-  "exact_titles": {
-    "monitor(a) de estágio – enfermagem": false,
-    "pessoa desenvolvedora fullstack pl (react/python)": true,
-    "analista comercial (pré-vendas) júnior": false,
-    "software engineer": true
-  },
-  "keywords_whitelist": [
-    "software", "desenvolvedor", "frontend", "backend", "fullstack", "devops",
-    "cloud", "dados", "data engineer", "qa", "machine learning", "ia generativa",
-    "ui/ux", "product designer", "tech lead", "dba", "cibersegurança"
-  ],
-  "keywords_blacklist": [
-    "enfermagem", "médic", "saúde", "farmac", "vendas", "comercial", "sdr",
-    "jurídic", "advogad", "cozinha", "recepcionist", "caixa", "atendimento ao cliente",
-    "estoquista", "logística", "motorista", "psicolog", "nutriç"
-  ]
-}
-```
+Uma análise técnica aprofundada identificou 6 pontos de falha em potencial. A implementação **deve obrigatoriamente incorporar as seguintes salvaguardas**:
 
-### Módulo 2: O Serviço Classificador (`server/services/classifier.ts`)
-```typescript
-export class TechClassifierService {
-  private static dictionary: TechDictionary;
-  private static pendingBatch: Array<{ job: Job; resolve: (isTech: boolean) => void }>;
+### 🚨 Lacuna 1: A Variação Infinita de Títulos (Cache Explosion)
+- **Risco**: Empresas escrevem o mesmo cargo com sutis variações de local, senioridade ou tags afirmativas (ex: *"Dev React - Remoto"*, *"Dev React (Híbrido - SP)"*, *"[1201] Dev React - PcD"*). Se o cache for por string bruta, o dicionário crescerá desnecessariamente e fará consultas repetidas na GPU para a mesma função.
+- **Salvaguarda**: **Higienização Canônica de Títulos (`canonicalizeTitle`)**:
+  - Antes de consultar a memória, limpar:
+    - Prefixos e IDs de ATS: `[1164]`, `Req #402`, `(ID: 29)`.
+    - Localidades e modelos: `(Remoto)`, `(Híbrido - SP)`, `- Campinas/SP`, `Brasil`.
+    - Tags afirmativas: `[Afirmativa Mulheres]`, `(PcD)`, `[Diversidade]`.
+  - Todas as variações colapsam para uma única chave canônica em memória: `"desenvolvedor react"`. O Hit-Rate da RAM já nasce acima de 90%.
 
-  // 1. Consulta RAM O(1)
-  public static async isTech(job: Job): Promise<boolean> {
-    const cached = this.checkDictionary(job.title);
-    if (cached !== undefined) return cached;
+### 🚨 Lacuna 2: Falsos Positivos Cruzados (Cargos Híbridos com "Tech/Software")
+- **Risco**: Títulos como *"Vendedor de Software B2B (SaaS)"*, *"Advogado Especialista em Direito Digital e Tecnologia"* ou *"Recrutador Tech (Tech Recruiter)"* contêm termos de tecnologia, mas a atividade-fim **não é de TI**.
+- **Salvaguarda**: **Precedência Absoluta da Blacklist**:
+  - A Blacklist de funções não-tech (`vendedor`, `vendas`, `comercial`, `advogado`, `jurídico`, `recrutador`, `rh`, `enfermeiro`, `interiores`, `psicólogo`) tem soberania total. Se contiver termo da blacklist, é descartado na hora, mesmo que cite "software" ou "tech".
+  - Diretriz no prompt do LLM:
+    > *"Considere TI apenas quem projeta, programa, testa, mantém infraestrutura ou desenha produtos digitais. Vendas de software, jurídico tech e RH tech são estritamente NÃO_TI."*
 
-    // 2. Se não estiver no cache, enfileira para lote
-    return this.queueForBatchClassification(job);
-  }
+### 🚨 Lacuna 3: Resiliência de Rede & Indisponibilidade do Host `servidor` (Fail-Safe)
+- **Risco**: Se o host `servidor` for desligado, estiver em reinicialização ou ocupado rodando outro modelo pesado no Open WebUI, o scraper não pode travar nem deixar vazar vagas.
+- **Salvaguarda**: **Circuit Breaker com Classificação Heurística Segura**:
+  - Timeout estrito de **3.5 segundos** na chamada HTTP ao Ollama.
+  - Se falhar 2 vezes seguidas:
+    - O crawler **não trava**: assume modo heurístico local (whitelist/blacklist em RAM).
+    - Vagas ambíguas que não puderem ser confirmadas recebem `techClassification: "PENDING"`.
+    - **Trava no WhatsApp**: O bot do WhatsApp só envia vagas com `isTech === true` confirmado, nunca vagas com status pendente.
 
-  // 3. Chamada em Lote para o Ollama no 'servidor' (192.168.31.2)
-  private static async processBatch(): Promise<void> {
-    // Monta prompt em JSON para até 20 vagas
-    // Envia POST http://192.168.31.2:11434/api/generate
-    // Popula tech_dictionary.json e resolve as promises
-  }
-}
-```
+### 🚨 Lacuna 4: Alucinação ou JSON Malformado do Modelo
+- **Risco**: Modelos compactos podem ocasionalmente responder fora do padrão, incluir markdown (` ```json `) ou omitir um item de uma lista de 20.
+- **Salvaguarda**: **Parser Defensivo com Coerção de Tipos**:
+  - Forçar `format: "json"` na API do Ollama.
+  - Limpar delimitadores de markdown antes do parse (`response.replace(/```json|```/g, '')`).
+  - Coerção flexível: aceitar `true`, `"true"`, `"TI"`, `"tech"`, `1`.
+  - Caso o modelo omita o ID de alguma vaga, apenas aquele item específico cai no fallback heurístico sem quebrar o processamento dos demais itens do lote.
 
-### Módulo 3: Interceptação no Crawler (`server/services/crawler.ts`)
-- Antes de salvar a vaga no banco ou emitir evento SSE:
-  ```typescript
-  const isTech = await TechClassifierService.isTech(jobData);
-  if (!isTech) {
-    // Descarta a vaga não-tech ou marca jobData.isTech = false
-    return;
-  }
-  ```
+### 🚨 Lacuna 5: Concorrência e Corrupção de Disco em Gravações Paralelas
+- **Risco**: O crawler roda múltiplos scrapers simultâneos em paralelo. Escrituras concorrentes no `tech_dictionary.json` podem corromper o arquivo.
+- **Salvaguarda**: **Escrita Atômica com Debounce em RAM**:
+  - Toda leitura e escrita durante a execução ocorre no objeto em memória RAM (`Map<string, TechClassification>`).
+  - A persistência no disco utiliza escrita atômica com arquivo temporário:
+    1. Salva em `data/tech_dictionary.json.tmp`.
+    2. Executa `fs.renameSync(tmp, final)` (operação atômica garantida pelo kernel Linux).
+  - Aplicação de *debounce* de 2 segundos para consolidar múltiplas gravações.
 
-### Módulo 4: Limpeza da Base Antiga (`server/services/storage.ts`)
-- Função `purgeNonTechJobs()`:
-  - Varre as 4.994 vagas existentes em `data/jobs.json`.
-  - Passa cada uma pelo classificador.
-  - Remove permanentemente as ~110 vagas não-tech.
-  - Registra a contagem de vagas purgadas e o espaço liberado.
-
-### Módulo 5: Trava de Segurança no Bot do WhatsApp (`server/bot/whatsapp.ts`)
-- Em `notifyNewJobs` e `dispatchCategoryJobs`:
-  ```typescript
-  if (!TechClassifierService.isTechSync(job.title)) {
-    continue; // Risco ZERO de enviar vaga fora de TI no grupo
+### 🚨 Lacuna 6: Governança e Hierarquia de Verdade (Imutabilidade do Usuário)
+- **Risco**: Se a IA errar uma classificação e gravar em cache, esse erro ficaria congelado na base.
+- **Salvaguarda**: **Níveis Explícitos de Autoridade**:
+  ```json
+  {
+    "desenvolvedor fullstack": { "isTech": true, "source": "RULE", "confidence": 1.0 },
+    "analista comercial": { "isTech": false, "source": "RULE", "confidence": 1.0 },
+    "especialista de solucoes": { "isTech": true, "source": "AI", "model": "llama3.2:3b" },
+    "engenheiro de petróleo": { "isTech": false, "source": "USER", "updatedAt": "2026-09-12" }
   }
   ```
-
-### Módulo 6: Curadoria com 1 Clique no Dashboard (`src/App.tsx`)
-- Adição dos botões no card de vaga na interface:
-  - 🔴 **"Não é TI"**: Remove a vaga da listagem imediatamente e treina o dicionário adicionando o título em `exact_titles: false`.
-  - 🟢 **"Confirmar TI"**: Confirma a vaga caso haja alguma dúvida.
+  - **`USER` (Curadoria humana no Dashboard)**: Prioridade máxima. A IA nunca pode sobrescrever uma decisão manual sua.
+  - **`RULE` (Whitelist/Blacklist estrita)**: Prioridade intermediária.
+  - **`AI` (Decisão do Ollama)**: Prioridade base.
 
 ---
 
-## 5. 🎯 Benefícios e Resultados Esperados
+## 5. 📐 Arquitetura dos Módulos a Implementar
 
-1. **Qualidade Absoluta das Vagas**: O grupo do WhatsApp e o painel web exibirão **100% de vagas relevantes** de tecnologia, eliminando ruído e descontentamento dos membros.
-2. **Latência Praticamente Nula**: 95%+ das consultas ocorrem na memória RAM (< 0.001ms).
-3. **Independência de Custos**: Não utiliza APIs pagas (OpenAI, Claude, etc.); todo o processamento inteligente roda no servidor local `servidor` com aceleração por GPU.
-4. **Resiliência a Mudanças de Mercado**: Novos títulos e cargos que surgirem com o tempo serão aprendidos automaticamente pela IA e consolidados no dicionário local.
+### Módulo 1: O Dicionário Persistente (`data/tech_dictionary.json`)
+Armazena a base de conhecimento consolidada para consultas O(1).
+
+### Módulo 2: O Serviço Classificador (`server/services/classifier.ts`)
+- Carrega o dicionário em RAM ao inicializar.
+- Implementa `canonicalizeTitle(title)`.
+- Gerencia o buffer de lote para o Ollama no host `servidor`.
+- Executa o Circuit Breaker e persistência atômica.
+
+### Módulo 3: Interceptação no Crawler (`server/services/crawler.ts`)
+- Antes de emitir o evento SSE ou gravar a vaga no banco, valida `await TechClassifierService.isTech(job)`.
+- Se for falso, descarta ou marca `isTech: false`.
+
+### Módulo 4: Higienização da Base Atual (`server/services/storage.ts`)
+- Implementar `StorageService.purgeNonTechJobs()` para limpar as ~110 vagas não-tech que já estão no banco `data/jobs.json`.
+
+### Módulo 5: Trava de Segurança no Bot do WhatsApp (`server/bot/whatsapp.ts`)
+- Validação síncrona obrigatória: `if (!TechClassifierService.isTechSync(job.title)) continue;`.
+
+### Módulo 6: Curadoria com 1 Clique no Dashboard (`src/App.tsx`)
+- Botões de ação rápida nos cards de vaga:
+  - 🔴 **"Não é TI"**: Remove a vaga da listagem imediatamente e marca o título como `isTech: false` com autoridade `USER`.
+  - 🟢 **"Confirmar TI"**: Confirma a vaga no dicionário com autoridade `USER`.
+- Botão no menu superior: "Limpar Vagas Não-TI".
+
+---
+
+## 6. 🎯 Resumo dos Parâmetros de Rede e Infraestrutura
+
+- **Host da Aplicação Web & Container Docker**: `gabisa` (`http://gabisa.local:3001` ou `ssh gabisa`).
+- **Host da Inteligência Artificial & Ollama**: `servidor` (`http://servidor.local:11434` ou `ssh servidor`).
+- **Modelo Oficial de Classificação**: `llama3.2:3b` (Q4_K_M na VRAM da GTX 1050 Ti).
+- **Formato de Comunicação da IA**: JSON puro (`format: "json"`).
