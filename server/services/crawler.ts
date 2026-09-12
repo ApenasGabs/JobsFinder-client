@@ -12,6 +12,7 @@ import { WorkableScraper } from "../scrapers/workable.js";
 import { Job, ScrapeOptions, ScrapeProgressEvent } from "../types.js";
 import { TechClassifierService } from "./classifier.js";
 import { StorageService } from "./storage.js";
+import { LoggerService } from "./logger.js";
 
 export class CrawlerService {
   private static isRegistered = false;
@@ -87,6 +88,15 @@ export class CrawlerService {
         `[CrawlerService] Disparando ${scrapers.length} scrapers para os termos:`,
         options.keywords,
       );
+      LoggerService.info(
+        "CRAWLER",
+        "CRAWL_STARTED",
+        `Iniciando busca com ${scrapers.length} scrapers para ${options.keywords.length} termo(s)`,
+        {
+          scrapers: scrapers.map((s) => s.id),
+          keywords: options.keywords,
+        },
+      );
 
       // Executa os scrapers selecionados em paralelo
       const promises = scrapers.map(async (scraper) => {
@@ -136,6 +146,12 @@ export class CrawlerService {
           return jobs;
         } catch (err) {
           console.error(`[CrawlerService] Erro no scraper ${scraper.id}:`, err);
+          LoggerService.error(
+            "CRAWLER",
+            "SCRAPER_ERROR",
+            `Falha no scraper ${scraper.name}: ${(err as any)?.message || err}`,
+            { scraperId: scraper.id, error: (err as any)?.message || String(err) },
+          );
           onProgress({
             type: "error",
             source: scraper.id,
@@ -151,6 +167,12 @@ export class CrawlerService {
       StorageService.flushToDisk();
 
       const durationMs = Date.now() - startTime;
+      LoggerService.info(
+        "CRAWLER",
+        "CRAWL_COMPLETED",
+        `Busca finalizada: ${collectedJobs.length} vagas de TI capturadas em ${(durationMs / 1000).toFixed(1)}s`,
+        { totalFound: collectedJobs.length, durationMs },
+      );
       onProgress({
         type: "done",
         message: `Busca concluída em ${(durationMs / 1000).toFixed(1)}s! Total de ${collectedJobs.length} vagas encontradas.`,

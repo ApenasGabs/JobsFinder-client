@@ -27,14 +27,8 @@ describe("Tech Classifier & Normalizer Suite", () => {
 
   describe("detectSeniority with boundary", () => {
     it("should detect ESTAGIO for intern and estágio", () => {
-      assert.equal(
-        detectSeniority("Software Engineer Intern"),
-        "ESTAGIO",
-      );
-      assert.equal(
-        detectSeniority("Estagiário de Desenvolvimento"),
-        "ESTAGIO",
-      );
+      assert.equal(detectSeniority("Software Engineer Intern"), "ESTAGIO");
+      assert.equal(detectSeniority("Estagiário de Desenvolvimento"), "ESTAGIO");
     });
 
     it("should NOT detect ESTAGIO for internal or international", () => {

@@ -12,6 +12,10 @@ import {
   Play,
   QrCode,
   Radio,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  FileText,
   RefreshCw,
   Save,
   Search,
@@ -129,6 +133,15 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(50);
 
+  // Sistema de Auditoria & Logs
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
+  const [logStats, setLogStats] = useState<any>(null);
+  const [isLoadingLogs, setIsLoadingLogs] = useState(false);
+  const [logCategoryFilter, setLogCategoryFilter] = useState<'ALL' | 'CLASSIFIER' | 'WHATSAPP' | 'CRAWLER' | 'USER_ACTION' | 'ERRORS'>('ALL');
+  const [logSearch, setLogSearch] = useState('');
+  const [expandedLogIds, setExpandedLogIds] = useState<Record<string, boolean>>({});
+
   // Parâmetros de execução do crawler
   const [selectedTerms, setSelectedTerms] = useState<string[]>(['java', 'react', 'node']);
   const [selectedSources, setSelectedSources] = useState<string[]>(['GUPY', 'INHIRE', 'ASHBY', 'LEVER', 'GREENHOUSE', 'WORKABLE', 'REMOTEOK', 'PROGRAMATHOR', 'FREELAS_99', 'GEEKHUNTER']);
@@ -156,11 +169,13 @@ export default function App() {
     loadStats();
     loadWhatsAppStatus();
     loadPendingCount(dispatchCategory);
+    loadLogStats();
 
     const interval = setInterval(() => {
       loadHealth();
       loadWhatsAppStatus();
       loadPendingCount(dispatchCategory);
+      loadLogStats();
     }, 5000);
 
     return () => clearInterval(interval);
@@ -602,6 +617,61 @@ export default function App() {
     loadStats();
   };
 
+  const loadLogStats = async () => {
+    try {
+      const res = await fetch('/api/logs/stats');
+      if (res.ok) {
+        setLogStats(await res.json());
+      }
+    } catch {
+      // Ignora silenciosamente
+    }
+  };
+
+  const loadLogs = async (
+    cat = logCategoryFilter,
+    query = logSearch
+  ) => {
+    setIsLoadingLogs(true);
+    try {
+      const params = new URLSearchParams();
+      if (cat === 'ERRORS') {
+        params.append('level', 'ERROR');
+      } else if (cat !== 'ALL') {
+        params.append('category', cat);
+      }
+      if (query.trim()) params.append('search', query.trim());
+      params.append('limit', '150');
+
+      const res = await fetch(`/api/logs?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLogs(data.logs || []);
+        if (data.stats) setLogStats(data.stats);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar logs:', err);
+    } finally {
+      setIsLoadingLogs(false);
+    }
+  };
+
+  const handleClearLogs = async () => {
+    if (!confirm('Deseja realmente limpar todo o histórico de logs do servidor?')) return;
+    try {
+      await fetch('/api/logs', { method: 'DELETE' });
+      setLogs([]);
+      loadLogs(logCategoryFilter, logSearch);
+      loadLogStats();
+    } catch (err) {
+      console.error('Erro ao limpar logs:', err);
+    }
+  };
+
+  const toggleExpandLog = (id: string) => {
+    setExpandedLogIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   // Vagas retornadas e filtradas diretamente pelo servidor
   const filteredJobs = jobs;
 
@@ -648,6 +718,36 @@ export default function App() {
               <QrCode size={16} /> Conectar WhatsApp
             </button>
           )}
+
+          <button
+            className="btn-action"
+            onClick={() => {
+              setShowLogsModal(true);
+              loadLogs();
+            }}
+            style={{ position: 'relative' }}
+            title="Ver auditoria e histórico de logs do sistema"
+          >
+            <FileText size={16} /> Logs & Auditoria
+            {Boolean(logStats?.errors && logStats.errors > 0) && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '-5px',
+                  right: '-5px',
+                  background: '#ef4444',
+                  color: 'white',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  borderRadius: '10px',
+                  padding: '0.1rem 0.4rem',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                }}
+              >
+                {logStats.errors}
+              </span>
+            )}
+          </button>
 
           <button className="btn-action" onClick={() => setShowConfigModal(true)}>
             <Settings size={16} /> Configurações
@@ -1710,6 +1810,299 @@ export default function App() {
                 Total integrado: {(config.gupyCompanies?.length || 0) + (config.inhireCompanies?.length || 0) + (config.ashbyCompanies?.length || 0) + (config.leverCompanies?.length || 0) + (config.greenhouseCompanies?.length || 0) + (config.workableCompanies?.length || 0)} empresas
               </span>
               <button className="btn-action primary" onClick={() => setShowConfigModal(false)}>
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Auditoria e Logs do Sistema */}
+      {showLogsModal && (
+        <div className="modal-overlay" onClick={() => setShowLogsModal(false)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.6rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                <FileText size={22} color="#3b82f6" />
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 600 }}>Auditoria & Telemetria do Sistema</h2>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {Boolean(logStats?.errors && logStats.errors > 0) && (
+                  <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '6px', background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.35)', fontWeight: 600 }}>
+                    {logStats.errors} erro(s)
+                  </span>
+                )}
+                {Boolean(logStats?.total) && (
+                  <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '6px', background: '#1e293b', color: '#94a3b8', border: '1px solid #334155' }}>
+                    {logStats.total} eventos no buffer
+                  </span>
+                )}
+
+                <a
+                  href="/api/logs/export"
+                  download="s-job-crawler-logs.json"
+                  className="btn-action"
+                  style={{ fontSize: '0.75rem', padding: '0.4rem 0.65rem', textDecoration: 'none', color: '#f8fafc' }}
+                  title="Baixar todos os logs em formato JSON"
+                >
+                  <Download size={13} /> Exportar
+                </a>
+
+                <button
+                  className="btn-action"
+                  onClick={() => loadLogs(logCategoryFilter, logSearch)}
+                  disabled={isLoadingLogs}
+                  style={{ fontSize: '0.75rem', padding: '0.4rem 0.65rem' }}
+                  title="Recarregar logs"
+                >
+                  <RefreshCw size={13} className={isLoadingLogs ? 'animate-spin' : ''} /> {isLoadingLogs ? 'Carregando...' : 'Recarregar'}
+                </button>
+
+                <button
+                  className="btn-action danger"
+                  onClick={handleClearLogs}
+                  style={{ fontSize: '0.75rem', padding: '0.4rem 0.65rem' }}
+                  title="Limpar logs"
+                >
+                  <Trash2 size={13} />
+                </button>
+
+                <button
+                  onClick={() => setShowLogsModal(false)}
+                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Tabs */}
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.8rem' }}>
+              {[
+                { id: 'ALL', label: 'Todos', color: '#3b82f6' },
+                { id: 'CLASSIFIER', label: '🤖 Filtros TI', color: '#10b981' },
+                { id: 'WHATSAPP', label: '📲 WhatsApp', color: '#38bdf8' },
+                { id: 'CRAWLER', label: '⚡ Crawler', color: '#8b5cf6' },
+                { id: 'USER_ACTION', label: '👤 Ações Humanas', color: '#f59e0b' },
+                { id: 'ERRORS', label: '⚠️ Apenas Erros', color: '#ef4444' },
+              ].map((tab) => {
+                const isActive = logCategoryFilter === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setLogCategoryFilter(tab.id as any);
+                      loadLogs(tab.id as any, logSearch);
+                    }}
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.8rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      border: isActive ? `1px solid ${tab.color}` : '1px solid #334155',
+                      background: isActive ? `${tab.color}22` : '#1e293b',
+                      color: isActive ? '#f8fafc' : '#94a3b8',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Search filter input */}
+            <div style={{ position: 'relative', marginBottom: '0.8rem' }}>
+              <Search size={15} color="#64748b" style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)' }} />
+              <input
+                type="text"
+                placeholder="Buscar em logs (vaga, erro, empresa, termo)..."
+                value={logSearch}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLogSearch(val);
+                  loadLogs(logCategoryFilter, val);
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.45rem 2rem 0.45rem 2.2rem',
+                  borderRadius: '6px',
+                  background: '#0f172a',
+                  border: '1px solid #334155',
+                  color: '#f8fafc',
+                  fontSize: '0.85rem'
+                }}
+              />
+              {logSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLogSearch('');
+                    loadLogs(logCategoryFilter, '');
+                  }}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* Logs List Container */}
+            <div
+              style={{
+                flex: 1,
+                overflowY: 'auto',
+                background: '#020617',
+                padding: '0.6rem',
+                borderRadius: '8px',
+                border: '1px solid #1e293b',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                minHeight: '280px',
+                maxHeight: '480px'
+              }}
+            >
+              {logs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
+                  <FileText size={32} style={{ margin: '0 auto 0.6rem', opacity: 0.5 }} />
+                  <p style={{ fontSize: '0.9rem' }}>Nenhum log registrado para os filtros atuais.</p>
+                </div>
+              ) : (
+                logs.map((item) => {
+                  const isExpanded = expandedLogIds[item.id];
+                  const isError = item.level === 'ERROR';
+                  const isWarn = item.level === 'WARN';
+
+                  const badgeBg = isError
+                    ? 'rgba(239, 68, 68, 0.15)'
+                    : isWarn
+                    ? 'rgba(245, 158, 11, 0.15)'
+                    : item.category === 'CLASSIFIER'
+                    ? 'rgba(16, 185, 129, 0.15)'
+                    : item.category === 'WHATSAPP'
+                    ? 'rgba(56, 189, 248, 0.15)'
+                    : 'rgba(139, 92, 246, 0.15)';
+
+                  const badgeColor = isError
+                    ? '#f87171'
+                    : isWarn
+                    ? '#fbbf24'
+                    : item.category === 'CLASSIFIER'
+                    ? '#34d399'
+                    : item.category === 'WHATSAPP'
+                    ? '#38bdf8'
+                    : '#c084fc';
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        background: '#0f172a',
+                        border: isError ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid #1e293b',
+                        borderRadius: '6px',
+                        padding: '0.6rem 0.8rem',
+                        fontSize: '0.82rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                          <span
+                            style={{
+                              background: badgeBg,
+                              color: badgeColor,
+                              padding: '0.15rem 0.45rem',
+                              borderRadius: '4px',
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase'
+                            }}
+                          >
+                            {item.category}
+                          </span>
+
+                          <span style={{ fontSize: '0.7rem', color: '#64748b', fontFamily: 'monospace' }}>
+                            {item.event}
+                          </span>
+                        </div>
+
+                        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                          {new Date(item.timestamp).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+
+                      <div style={{ color: isError ? '#fca5a5' : '#f8fafc', fontWeight: 500, lineHeight: 1.4 }}>
+                        {item.message}
+                      </div>
+
+                      {item.details && Object.keys(item.details).length > 0 && (
+                        <div style={{ marginTop: '0.4rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => toggleExpandLog(item.id)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#38bdf8',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              padding: '0'
+                            }}
+                          >
+                            {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                            {isExpanded ? 'Ocultar payload' : 'Ver payload estruturado { }'}
+                          </button>
+
+                          {isExpanded && (
+                            <pre
+                              style={{
+                                marginTop: '0.4rem',
+                                background: '#020617',
+                                border: '1px solid #1e293b',
+                                borderRadius: '4px',
+                                padding: '0.5rem',
+                                fontSize: '0.72rem',
+                                color: '#93c5fd',
+                                overflowX: 'auto',
+                                maxHeight: '200px'
+                              }}
+                            >
+                              {JSON.stringify(item.details, null, 2)}
+                            </pre>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Bottom Footer */}
+            <div style={{ marginTop: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                Salvo em: <code>data/logs/activity-*.jsonl</code> (Retenção automática de 14 dias)
+              </span>
+              <button className="btn-action primary" onClick={() => setShowLogsModal(false)}>
                 Fechar
               </button>
             </div>

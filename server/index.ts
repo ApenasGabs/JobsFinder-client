@@ -6,11 +6,12 @@ import { fileURLToPath } from "url";
 import { WhatsAppBot } from "./bot/whatsapp.js";
 import { LightpandaEngine } from "./engines/lightpanda.js";
 import { ScraperRegistry } from "./scrapers/base.js";
+import { TechClassifierService } from "./services/classifier.js";
 import { ConfigService } from "./services/config.js";
 import { CrawlerService } from "./services/crawler.js";
 import { SchedulerService } from "./services/scheduler.js";
 import { StorageService } from "./services/storage.js";
-import { TechClassifierService } from "./services/classifier.js";
+import { LoggerService, LogCategory, LogLevel } from "./services/logger.js";
 import {
   ContractType,
   ScrapeOptions,
@@ -119,7 +120,8 @@ app.get("/api/jobs", (req: Request, res: Response) => {
       ? (String(contractType) as ContractType)
       : undefined,
     notified: notified ? String(notified) : undefined,
-    onlyTech: onlyTech !== undefined ? (onlyTech === "true" || onlyTech === "1") : false,
+    onlyTech:
+      onlyTech !== undefined ? onlyTech === "true" || onlyTech === "1" : false,
     page: page ? parseInt(String(page), 10) : 1,
     pageSize: pageSize ? parseInt(String(pageSize), 10) : 50,
   });
@@ -349,6 +351,39 @@ app.post("/api/scrape", async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ error: err?.message || "Erro ao executar crawler" });
   }
+});
+
+// 11. ROTAS DE AUDITORIA E TELEMETRIA (LOGS)
+app.get("/api/logs", (req: Request, res: Response) => {
+  const { category, level, search, limit, since } = req.query;
+  const logs = LoggerService.getLogs({
+    category: category ? (String(category) as LogCategory) : undefined,
+    level: level ? (String(level) as LogLevel) : undefined,
+    search: search ? String(search) : undefined,
+    limit: limit ? parseInt(String(limit), 10) : 100,
+    since: since ? String(since) : undefined,
+  });
+  const stats = LoggerService.getStats();
+  res.json({ logs, stats });
+});
+
+app.get("/api/logs/stats", (_req: Request, res: Response) => {
+  res.json(LoggerService.getStats());
+});
+
+app.get("/api/logs/export", (_req: Request, res: Response) => {
+  const logs = LoggerService.exportLogs();
+  res.setHeader(
+    "Content-Disposition",
+    'attachment; filename="s-job-crawler-logs.json"',
+  );
+  res.setHeader("Content-Type", "application/json");
+  res.json(logs);
+});
+
+app.delete("/api/logs", (_req: Request, res: Response) => {
+  LoggerService.clearLogs();
+  res.json({ success: true, message: "Logs limpos com sucesso" });
 });
 
 // Serve o frontend React compilado se existir a pasta dist/

@@ -3,6 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { Job } from "../types.js";
 import { canonicalizeTitle } from "../utils/normalizer.js";
+import { LoggerService } from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -290,6 +291,22 @@ export class TechClassifierService {
       updatedAt: new Date().toISOString(),
     });
 
+    if (source === "USER") {
+      LoggerService.info(
+        "USER_ACTION",
+        "CLASSIFIER_FEEDBACK",
+        `Usuário classificou "${canonical}" como ${isTech ? "TI" : "NÃO-TI"}`,
+        { canonical, isTech, source },
+      );
+    } else if (source === "AI") {
+      LoggerService.info(
+        "CLASSIFIER",
+        isTech ? "JOB_ACCEPTED_AI" : "JOB_REJECTED_AI",
+        `IA Local classificou "${canonical}" como ${isTech ? "TI" : "NÃO-TI"}`,
+        { canonical, isTech, source },
+      );
+    }
+
     this.scheduleSave();
   }
 
@@ -408,11 +425,24 @@ export class TechClassifierService {
       );
 
       this.consecutiveAiFailures++;
+      LoggerService.warn(
+        "CLASSIFIER",
+        "AI_BATCH_FAILED",
+        `Falha na IA local: ${err?.message || err}`,
+        { consecutiveFailures: this.consecutiveAiFailures },
+      );
+
       // Se falhar 2 vezes seguidas, abre o Circuit Breaker por 30 segundos
       if (this.consecutiveAiFailures >= 2) {
         this.circuitBreakerUntil = Date.now() + 30000;
         console.warn(
           `[TechClassifier] ⚠️ Circuit Breaker ativado para IA local por 30s.`,
+        );
+        LoggerService.warn(
+          "CLASSIFIER",
+          "AI_CIRCUIT_BREAKER",
+          "Circuit Breaker ativado para IA local por 30 segundos",
+          { pauseMs: 30000 },
         );
       }
 

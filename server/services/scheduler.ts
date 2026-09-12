@@ -2,6 +2,7 @@ import cron, { ScheduledTask } from 'node-cron';
 import { CrawlerService } from './crawler.js';
 import { ConfigService } from './config.js';
 import { WhatsAppBot } from '../bot/whatsapp.js';
+import { LoggerService } from './logger.js';
 import { Job, ScrapeOptions } from '../types.js';
 
 export class SchedulerService {
@@ -27,6 +28,7 @@ export class SchedulerService {
 
     this.task = cron.schedule(cronExpression, async () => {
       console.log(`[Scheduler] 🔔 Disparando varredura periódica programada [${new Date().toISOString()}]`);
+      LoggerService.info('SCHEDULER', 'SCHEDULER_TRIGGER', 'Disparo de varredura periódica programada pelo Scheduler 24/7');
       await this.runScrapeAndNotify();
     });
   }
@@ -34,6 +36,7 @@ export class SchedulerService {
   public static async runScrapeAndNotify(): Promise<{ totalFound: number; newJobsCount: number }> {
     if (this.isRunningNow || CrawlerService.isScraping()) {
       console.log('[Scheduler] Uma busca já está em andamento. Pulando ciclo agendado.');
+      LoggerService.info('SCHEDULER', 'SCHEDULER_SKIPPED', 'Varredura pulada pois outra busca já está em andamento');
       return { totalFound: 0, newJobsCount: 0 };
     }
 
@@ -57,6 +60,12 @@ export class SchedulerService {
       });
 
       console.log(`[Scheduler] Varredura concluída: ${result.totalFound} vagas no total, ${newJobsCollected.length} novas.`);
+      LoggerService.info(
+        'SCHEDULER',
+        'SCHEDULER_COMPLETED',
+        `Varredura agendada concluída: ${result.totalFound} vagas no total, ${newJobsCollected.length} novas vagas de TI`,
+        { totalFound: result.totalFound, newJobsCount: newJobsCollected.length }
+      );
 
       if (newJobsCollected.length > 0) {
         console.log(`[Scheduler] Despachando ${newJobsCollected.length} novas vagas para o Bot do WhatsApp...`);

@@ -4,6 +4,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { ContractType, Job, SeniorityLevel, WorkModel } from "../types.js";
 import { TechClassifierService } from "./classifier.js";
+import { LoggerService } from "./logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,9 +112,16 @@ export class StorageService {
 
   public static deleteJob(jobId: string): boolean {
     this.initialize();
+    const existing = this.jobsMap.get(jobId);
     const deleted = this.jobsMap.delete(jobId);
     if (deleted) {
       this.scheduleSave();
+      LoggerService.info(
+        "STORAGE",
+        "JOB_DELETED",
+        `Vaga removida: "${existing?.title || jobId}"`,
+        { jobId, title: existing?.title, company: existing?.company },
+      );
     }
     return deleted;
   }
@@ -175,6 +183,16 @@ export class StorageService {
     this.saveToDiskSync();
     console.log(
       `[Storage] 🧹 Purge concluído: ${purgedTitles.length} vagas não-tech removidas. Restam ${this.jobsMap.size} vagas ativas de TI.`,
+    );
+    LoggerService.info(
+      "STORAGE",
+      "PURGE_EXECUTED",
+      `Expurgo concluído: ${purgedTitles.length} vagas não-TI removidas. Restam ${this.jobsMap.size} vagas ativas.`,
+      {
+        purgedCount: purgedTitles.length,
+        remainingCount: this.jobsMap.size,
+        backupFile,
+      },
     );
 
     return {

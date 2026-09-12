@@ -9,9 +9,10 @@ import path from "path";
 import pino from "pino";
 import qrcode from "qrcode";
 import { fileURLToPath } from "url";
+import { TechClassifierService } from "../services/classifier.js";
 import { ConfigService } from "../services/config.js";
 import { StorageService } from "../services/storage.js";
-import { TechClassifierService } from "../services/classifier.js";
+import { LoggerService } from "../services/logger.js";
 import { Job, WhatsAppStatus } from "../types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -88,6 +89,12 @@ export class WhatsAppBot {
           console.log(
             `[WhatsApp] Conexão encerrada (código: ${statusCode}). Reconectando em 10s: ${shouldReconnect}`,
           );
+          LoggerService.warn(
+            "WHATSAPP",
+            "WA_DISCONNECTED",
+            `Conexão encerrada (código: ${statusCode}). Reconectar: ${shouldReconnect}`,
+            { statusCode, shouldReconnect },
+          );
 
           this.status = "disconnected";
           this.sock = null;
@@ -103,6 +110,12 @@ export class WhatsAppBot {
           this.botNumber = userJid.split(":")[0] || userJid.split("@")[0];
           console.log(
             `[WhatsApp] ✅ Conectado com sucesso como: ${this.botNumber}`,
+          );
+          LoggerService.info(
+            "WHATSAPP",
+            "WA_CONNECTED",
+            `Conectado com sucesso como +${this.botNumber}`,
+            { botNumber: this.botNumber },
           );
 
           // Cold Start Protection: marca vagas anteriores para evitar flood
@@ -309,7 +322,10 @@ export class WhatsAppBot {
     let addedCount = 0;
     for (const job of jobs) {
       // Trava de segurança WhatsApp: descarta imediatamente se não for confirmada como TI
-      if (job.isTech === false || !TechClassifierService.isTechSync(job.title)) {
+      if (
+        job.isTech === false ||
+        !TechClassifierService.isTechSync(job.title)
+      ) {
         continue;
       }
       if (!existingIds.has(job.id)) {
@@ -317,6 +333,15 @@ export class WhatsAppBot {
         existingIds.add(job.id);
         addedCount++;
       }
+    }
+
+    if (addedCount > 0) {
+      LoggerService.info(
+        "WHATSAPP",
+        "WA_JOBS_ENQUEUED",
+        `${addedCount} vaga(s) enfileirada(s) para disparo (Total na fila: ${this.messageQueue.length})`,
+        { addedCount, queueTotal: this.messageQueue.length },
+      );
     }
 
     if (addedCount > 0 && !this.isProcessingQueue) {
@@ -405,10 +430,31 @@ export class WhatsAppBot {
         console.log(
           `[WhatsApp] ✅ Mensagem agrupada enviada com sucesso com ${currentBatch.length} vagas!`,
         );
+        LoggerService.info(
+          "WHATSAPP",
+          "WA_BATCH_DISPATCHED",
+          `Lote de ${currentBatch.length} vaga(s) despachado com sucesso para o grupo`,
+          {
+            target,
+            count: currentBatch.length,
+            queueRemaining: this.messageQueue.length,
+            jobs: currentBatch.map((j) => ({
+              id: j.id,
+              title: j.title,
+              company: j.company,
+            })),
+          },
+        );
       } catch (err: any) {
         console.error(
           `[WhatsApp] Erro ao enviar mensagem agrupada:`,
           err?.message || err,
+        );
+        LoggerService.error(
+          "WHATSAPP",
+          "WA_DISPATCH_ERROR",
+          `Erro ao enviar mensagem agrupada: ${err?.message || err}`,
+          { target, count: currentBatch.length, error: err?.message || String(err) },
         );
       }
 
@@ -417,6 +463,15 @@ export class WhatsAppBot {
         this.nextBatchTimestamp = Date.now() + intervalMs;
         console.log(
           `[WhatsApp] ⏳ Lote concluído. Próximo lote (${Math.min(batchSize, this.messageQueue.length)} vagas) em ${batchIntervalMinutes} minutos.`,
+        );
+        LoggerService.info(
+          "WHATSAPP",
+          "WA_RATE_LIMIT",
+          `Intervalo anti-ban: próximo lote de ${Math.min(batchSize, this.messageQueue.length)} vagas em ${batchIntervalMinutes} minutos`,
+          {
+            batchIntervalMinutes,
+            queueRemaining: this.messageQueue.length,
+          },
         );
 
         this.batchTimer = setTimeout(() => {
