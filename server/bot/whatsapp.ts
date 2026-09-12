@@ -540,7 +540,10 @@ export class WhatsAppBot {
 
   private static cleanLocation(loc?: string): string {
     if (!loc) return "";
-    return loc.replace(/,\s*BR$/i, "").replace(/,\s*Brasil$/i, "").trim();
+    return loc
+      .replace(/,\s*BR$/i, "")
+      .replace(/,\s*Brasil$/i, "")
+      .trim();
   }
 
   private static formatSingleJobMessage(job: Job): string {
